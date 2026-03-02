@@ -16,8 +16,8 @@ logging.info(f"Got current_datetime of {current_datetime}")
 def ingest_rss_feeds():
     """Parse RSS feeds and return dictionary of information"""
     feed_urls = {
-        'Docker Blog': 'docker.com/blog',
-        'Hugging Face Blog': 'https://huggingface.co/blog',
+        'Docker Blog': 'https://www.docker.com/blog/feed/',
+        'Hugging Face Blog': 'https://huggingface.co/blog/feed.xml',
     }
     for name, url in feed_urls.items():
         feed = feedparser.parse(url)
