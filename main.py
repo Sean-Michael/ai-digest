@@ -30,11 +30,12 @@ def main():
     ready_to_publish = False
 
     final = None
+    feedback = None
     raw_articles = ingest_rss_feeds()
     curated_articles = curator(raw_articles)
 
     while not ready_to_publish:
-        draft = writer(curated_articles)
+        draft = writer(curated_articles, feedback)
         feedback = editor(draft)
         if "LGTM" in feedback:
             ready_to_publish = True
