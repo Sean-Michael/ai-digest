@@ -12,7 +12,7 @@ So the plan is to self host the LLM component using vLLM for inference.
 
 I want to build three kinds of agents to work together:
 
-1. The Curator
+1. The Researcher
 
     This agent will parse my RSS feeds (eventually maybe a researcher will comb websites) and grab things that seem interesting, recent announcements, model launches, things like that.
 
@@ -28,7 +28,7 @@ I want to build three kinds of agents to work together:
 
 I'm picturing a pretty straightforward loop that follows how a human team might approach the issue.
 
-1. The curator gathers a daily report on a cron, luckily since everyone in this team works so fast the curator won't have to stay up late or wake up super early, it can likely run maybe 5 minutes before the writer needs to do it's thing.
+1. The researcher gathers a daily report on a cron, luckily since everyone in this team works so fast the researcher won't have to stay up late or wake up super early, it can likely run maybe 5 minutes before the writer needs to do it's thing.
 
 2. The writer takes this report and begins isolating the stories it wants to cover in depth, creating a first draft.
 
