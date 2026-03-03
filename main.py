@@ -12,6 +12,8 @@ TODO:
 - [ ] Add traces to all calls
 - [ ] Trim summaries to help token limits/truncation
 - [ ] Speedup ingest_rss_feeds
+- [ ] Experiment tracking for different models/prompts
+- [ ] Map reduce for articles researcher needs to summarize them for the writer
 """
 
 import feedparser
@@ -21,7 +23,7 @@ from time import mktime
 import json
 import ollama
 
-CURATOR_MODEL = "qwen2.5:3b"
+RESEARCHER_MODEL = "qwen2.5:3b"
 MAX_REVISIONS = 3
 INTERESTS = ["AI", "ML", "MLOps", "AI Engineering", "DevOps", "Kubernetes", "NVIDIA", "LangChain", "Agents", "Anthropic", "Claude Code"]
 
@@ -33,8 +35,8 @@ logging.basicConfig(format=FORMAT,level=LOG_LEVEL)
 current_utc_time = datetime.now(UTC)
 logging.info(f"Current UTC time {current_utc_time}")
 
-def build_curator_prompt(interests: list[str], articles: list[dict[str]]) -> str:
-    prompt = f"""You are a curator of news stories for an AI / ML Ops professional interested in the following topics: {interests}. 
+def build_researcher_prompt(interests: list[str], articles: list[dict[str]]) -> str:
+    prompt = f"""You are a researcher of news stories for an AI / ML Ops professional interested in the following topics: {interests}. 
     Specifically focus on new technology or product releases, workflows, techniques, or otherwise 'technical' content rather than social or political.
     Given a list of articles in the following format:
             "source": source,
@@ -90,7 +92,7 @@ def ingest_rss_feeds() -> dict:
     return results
 
 
-def curator(raw_articles: dict) -> str:
+def researcher(raw_articles: dict) -> list[dict] | None:
     """Refine article results into best candidates"""
     trimmed = [
         {
@@ -102,18 +104,23 @@ def curator(raw_articles: dict) -> str:
         for source, entries in raw_articles.items()
         for entry in entries 
     ]
-    curator_prompt = build_curator_prompt(INTERESTS, json.dumps(trimmed))
-    system_prompt = "You are a precise newsletter curator. Follow instructions exactly. Return only what is asked."
-    #logging.debug(f"Curator Prompt: {curator_prompt}")
+    researcher_prompt = build_researcher_prompt(INTERESTS, json.dumps(trimmed))
+    system_prompt = "You are a precise newsletter researcher. Follow instructions exactly. Return only what is asked."
+    #logging.debug(f"researcher Prompt: {researcher_prompt}")
     response = ""
     try:
-        response = chat_with_ollama(CURATOR_MODEL, system_prompt, curator_prompt)
+        response = chat_with_ollama(RESEARCHER_MODEL, system_prompt, researcher_prompt)
     except Exception as e:
         logging.error(f"Caught Exception: {e}")
 
-    curated_articles = response.message.content
-    logging.debug(f"Curator response content: {curated_articles}")
-    return curated_articles
+    try: 
+        curated_links = json.loads(response.message.content)
+        logging.debug(f"researcher links: {curated_links}")
+        curated_articles = [a for a in trimmed if a.get('link') in curated_links]
+        return curated_articles
+    except Exception as e:
+        logging.error(f"Caught exception loading response as JSON: {e}")
+        return None
 
 
 def writer(curated_articles: str, feedback:str | None) -> str:
@@ -145,7 +152,7 @@ def main():
     feedback = None
     revisions = 0
     raw_articles = ingest_rss_feeds()
-    curated_articles = curator(raw_articles)
+    curated_articles = researcher(raw_articles)
 
     while not ready_to_publish and revisions < MAX_REVISIONS:
         draft = writer(curated_articles, feedback)
