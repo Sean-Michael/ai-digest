@@ -26,7 +26,7 @@ import re
 import ollama
 from zoneinfo import ZoneInfo
 
-RESEARCHER_MODEL = "mistral:7b-instruct-v0.3-q8_0"
+RESEARCHER_MODEL = "qwen2.5:3b"
 WRITER_MODEL = "mistral:7b-instruct-v0.3-q8_0"
 EDITOR_MODEL = "mistral:7b-instruct-v0.3-q8_0"
 MAX_REVISIONS = 3
