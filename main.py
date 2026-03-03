@@ -25,28 +25,31 @@ logging.info(f"Curren UTC time {current_utc_time}")
 
 def ingest_rss_feeds() -> dict:
     """Parse RSS feeds and return dictionary of information"""
+    """TODO: Add some try/except timeout/rate limit handling"""
     feeds = None
     with open("feeds.json", "r") as json_file:
         feeds = json.load(json_file)
     results = {}
     for name, url in feeds.items():
+        results[name] = []
         feed = feedparser.parse(url)
         for entry in feed.entries:
             date = entry.get('published_parsed') or entry.get('updated_parsed')
             if date:
                 timestamp = mktime(date)
                 datetime_obj = datetime.fromtimestamp(timestamp, UTC)
-                if  datetime_obj > current_utc_time - timedelta(hours=24*7):
-                    results[name] = entry
-        if results.get(name) is not None:
+                if  datetime_obj > current_utc_time - timedelta(hours=24):
+                    results[name].append(entry)
+        if results.get(name, []):
             logging.debug(f"Got {len(results.get(name))} recent entries for {name}")    
     return results
 
 
 def curator(raw_articles: dict) -> str:
     """Refine article results into best candidates"""
-    for entry in raw_articles.values():
-        logging.info(entry.get('summary'))
+    for source, entries in raw_articles.items():
+        for entry in entries:
+            logging.info(f"Curator reading {source} article: {entry.get('title')}")
 
     curated_articles = None
     return curated_articles
