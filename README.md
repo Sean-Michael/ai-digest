@@ -43,3 +43,11 @@ I'm picturing a pretty straightforward loop that follows how a human team might 
     b.) *n* number of iterations have passed.. not sure how many this should be yet maybe like 4? This is where some experiment tracking is needed to find an optimal number of iterations.
 
 6. The final draft is copied to an S3 bucket where my [personal website](https://sean-michael.dev)) will serve it as a daily edition.
+
+## Beyond RSS
+
+Not everything is available in a nice RSS feed and I will have to do some browser automation or maybe just some simple wgetting to get more blogs and technical reviews and documentation.
+
+I'll just keep a running list of things that are in the works..
+
+- [Anthropic Engineering](https://www.anthropic.com/engineering)

@@ -9,6 +9,7 @@ import feedparser
 import logging
 from datetime import datetime, timedelta, UTC
 from time import mktime
+import json
 
 MAX_REVISIONS = 3
 
@@ -21,31 +22,24 @@ current_utc_time = datetime.now(UTC)
 logging.info(f"Curren UTC time {current_utc_time}")
 
 
-def ingest_rss_feeds():
+def ingest_rss_feeds() -> dict:
     """Parse RSS feeds and return dictionary of information"""
-    feed_urls = {
-        'Docker Blog': 'https://www.docker.com/blog/feed/',
-        'Hugging Face Blog': 'https://huggingface.co/blog/feed.xml',
-    }
+    feeds = None
+    with open("feeds.json", "r") as json_file:
+        feeds = json.load(json_file)
     daily_results = {}
-    for name, url in feed_urls.items():
+    for name, url in feeds.items():
         feed = feedparser.parse(url)
-        logging.info(f"Feed Title: {feed.feed.title}")
-        logging.info(f"Feed Link: {feed.feed.link}")
         for entry in feed.entries:
-            #logging.debug(f"Processing entry: {entry.title}...")
             date = entry.get('published_parsed')
             if date:
                 timestamp = mktime(date)
                 datetime_obj = datetime.fromtimestamp(timestamp, UTC)
-                logging.debug(datetime_obj)
-                if  datetime_obj > current_utc_time - timedelta(hours=100):
+                if  datetime_obj > current_utc_time - timedelta(hours=24*7):
                     daily_results[name] = entry
-                    logging.debug(f"Got {len(daily_results[name])} recent entries for {name}")
-
-            
-    articles = None
-    return articles
+        if daily_results.get(name) is not None:
+            logging.debug(f"Got {len(daily_results.get(name))} recent entries for {name}")    
+    return daily_results
 
 
 def curator(raw_articles: str) -> str:
