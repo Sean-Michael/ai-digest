@@ -8,9 +8,10 @@ Version:
 
 """
 TODO:
-- [ ] Add timings to functions
+- [ ] Add timings to functions 
 - [ ] Add traces to all calls
 - [ ] Trim summaries to help token limits/truncation
+- [ ] Speedup ingest_rss_feeds
 """
 
 import feedparser
@@ -50,9 +51,18 @@ def build_curator_prompt(interests: list[str], articles: list[dict[str]]) -> str
     """
     return prompt
 
-def chat_with_ollama(model_name: str, prompt:str) -> dict | None:
+def chat_with_ollama(model_name: str, system_prompt:str, user_prompt:str) -> dict | None:
     """Sends a chat to a model with a prompt"""
-    message = [{"role": "system", "content": prompt}]
+    message = [
+        {
+            "role": "system", 
+            "content": system_prompt
+        },
+        {
+            "role": "user",
+            "content": user_prompt
+        }
+    ]
     response = ollama.chat(model=model_name, messages=message)
     logging.debug(f"Response from Ollama: {response}")
     return response
@@ -73,7 +83,7 @@ def ingest_rss_feeds() -> dict:
             if date:
                 timestamp = mktime(date)
                 datetime_obj = datetime.fromtimestamp(timestamp, UTC)
-                if  datetime_obj > current_utc_time - timedelta(hours=24):
+                if  datetime_obj > current_utc_time - timedelta(hours=12):
                     results[name].append(entry)
         if results.get(name, []):
             logging.debug(f"Got {len(results.get(name))} recent entries for {name}")    
@@ -93,17 +103,16 @@ def curator(raw_articles: dict) -> str:
         for entry in entries 
     ]
     curator_prompt = build_curator_prompt(INTERESTS, json.dumps(trimmed))
+    system_prompt = "You are a precise newsletter curator. Follow instructions exactly. Return only what is asked."
     #logging.debug(f"Curator Prompt: {curator_prompt}")
     response = ""
     try:
-        response = chat_with_ollama(MODEL, curator_prompt)
+        response = chat_with_ollama(MODEL, system_prompt, curator_prompt)
     except Exception as e:
         logging.error(f"Caught Exception: {e}")
 
-    logging.info(response)
-        
-
-    curated_articles = None
+    curated_articles = response.message.content
+    logging.debug(f"Curator response content: {curated_articles}")
     return curated_articles
 
 
