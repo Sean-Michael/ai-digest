@@ -22,6 +22,7 @@ import logging
 from datetime import datetime, timedelta, UTC
 from time import mktime
 import json
+import re
 import ollama
 
 RESEARCHER_MODEL = "qwen2.5:3b"
@@ -74,7 +75,7 @@ def ingest_rss_feeds() -> dict:
             if date:
                 timestamp = mktime(date)
                 datetime_obj = datetime.fromtimestamp(timestamp, UTC)
-                if  datetime_obj > current_utc_time - timedelta(hours=12):
+                if  datetime_obj > current_utc_time - timedelta(hours=24):
                     results[name].append(entry)
         if results.get(name, []):
             logging.debug(f"Got {len(results.get(name))} recent entries for {name}")    
@@ -90,8 +91,9 @@ def build_researcher_prompt(interests: list[str], articles: list[dict[str]]) -> 
             "summary": entry.summary,
             "link": entry.link
     
-    Please return the links to NO MORE THAN 10 articles that you have selected based on the criteria. 
-    Return ONLY a JSON array of selected article links, nothing else. Example format:
+    1. Select no more than 10 articles that best match the interest topics and criteria.
+    2. Gather the UNIQUE links for each article 
+    3. Return ONLY a JSON array of selected article links, nothing else. Example format:
 ["https://...", "https://..."]
     
     ARTICLES:
@@ -102,7 +104,7 @@ def build_researcher_prompt(interests: list[str], articles: list[dict[str]]) -> 
 
 def summarize_article(article: dict):
     system_prompt = "You are a precise newsletter researcher. Follow instructions exactly. Return only what is asked."
-    user_prompt = f"Read the following article content and return ONLY a summary of what you read. ARTICLE: {article.get('content')}"
+    user_prompt = f"Read the following article content and return ONLY a summary of what you read. ARTICLE: {re.sub(r'<[^>]+>', '', article.get('content'))}"
     response = chat_with_ollama(RESEARCHER_MODEL, system_prompt, user_prompt)
 
     summary = response.message.content
@@ -124,7 +126,7 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
             "source": source,
             "title": entry.get('title', 'NO TITLE'),
             "summary": entry.get('summary','NO SUMMARY'),
-            "content": (entry.get('content', [{}])[0].get('value', '') or article.get('summary', 'NO CONTENT'))[:3000],
+            "content": (entry.get('content', [{}])[0].get('value', '') or entry.get('summary', 'NO CONTENT'))[:3000],
             "link": entry.get('link', 'NO LINK')
         } 
         for source, entries in raw_articles.items()
