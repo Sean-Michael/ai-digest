@@ -24,8 +24,10 @@ from time import mktime
 import json
 import re
 import ollama
+from zoneinfo import ZoneInfo
 
 RESEARCHER_MODEL = "qwen2.5:3b"
+WRITER_MODEL = "qwen3.5:9b"
 MAX_REVISIONS = 3
 INTERESTS = [
     "AI", "ML", "MLOps", "LLMOps", "Platform Engineering", "AI Engineering",
@@ -147,18 +149,43 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
         logging.debug(f"researcher links: {curated_links}")
         curated_articles = [a for a in trimmed if a.get('link') in curated_links]
         logging.debug(f"curated_articles: {curated_articles}")
+        logging.info(f"Researcher curated {len(curated_articles)} articles")
         
         summarized_articles = [summarize_article(a) for a in curated_articles]
+        logging.info(f"Researcher summarized {len(summarized_articles)} articles")
         return summarized_articles
     except Exception as e:
-        logging.error(f"Caught exception loading response as JSON: {e}")
+        logging.error(f"Caught exception: {e}")
         return None
 
 
-def writer(curated_articles: str, feedback:str | None) -> str:
+def writer(articles: str, feedback:str | None) -> str:
     """Take curated articles and generate a Newsletter.MD"""
-    newsletter_draft = None
-    return newsletter_draft
+    now_pacific = datetime.now(ZoneInfo("America/Los_Angeles"))
+    pacific_string_formatted = now_pacific.strftime("%Y-%m-%d %H:%M:%S %Z %z")
+    newsletter = ""
+
+    system_prompt = "You are a technical newsletter writer, be precise and follow instructions exactly."
+    user_prompt = f"""
+        Given a list of summarized articles and the date, produce a markdown formatted newsletter in the following format:
+        - Header with the {pacific_string_formatted} and some title relating to a key story or theme
+        - One highlighted story that goes into some more depth
+        - Several minor stories
+        - Each story should have a link in the title like [Title](link/to/source)
+        
+        ARTICLES:
+        {articles}
+
+        if feedback is provided then use it to refine your draft:
+        {feedback}
+
+        Return ONLY the markdown formatted newsletter you wrote.
+    """
+
+    response = chat_with_ollama(WRITER_MODEL, system_prompt, user_prompt)
+    newsletter = response.message.content
+    logging.info(f"Newsletter draft: {newsletter}")
+    return newsletter
 
 
 def editor(draft: str) -> str:
