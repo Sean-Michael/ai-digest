@@ -109,13 +109,17 @@ def build_researcher_prompt(interests: list[str], articles: list[dict[str]]) -> 
 
 
 def summarize_article(article: dict):
-    system_prompt = "You are a precise newsletter researcher. Follow instructions exactly. Return only what is asked."
+    system_prompt = """
+    You are a research assistant summarizing articles for a senior DevOps engineer 
+    interested in AI and MLOps. They build on Kubernetes, work with self-hosted LLMs, 
+    and care about practical tooling. Summarize only what is in the article. 
+    If the content is thin, say so briefly.
+    """
     user_prompt = f"""
-        Read the following article content and generate a thorough research summary of what you read.
-        Include key details and learnings that might interest an AI/ML Engineer.
-        Only use information from within the article, do not make anything up. If there is no information in the article,
-        indicate that.
-        
+        Summarize this article in one or two paragraphs. Cover: what it is, the key technical 
+        insight or announcement, one concrete detail (metric, example, or comparison), 
+        and why it matters to someone building ML infrastructure.
+
         ARTICLE: 
         {re.sub(r'<[^>]+>', '', article.get('content'))}
     """
@@ -171,29 +175,58 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
         return None
 
 
-def writer(articles: str, feedback:str | None) -> str:
+def writer(articles: str, previous_draft:str | None, feedback:str | None) -> str:
     """Take curated articles and generate a Newsletter.MD"""
     now_pacific = datetime.now(ZoneInfo("America/Los_Angeles"))
-    pacific_string_formatted = now_pacific.strftime("%Y-%m-%d")
+    date = now_pacific.strftime("%Y-%m-%d")
     newsletter = ""
     if feedback is None:
         feedback = ""
 
-    system_prompt = "You are a technical newsletter writer, be precise and follow instructions exactly."
+    system_prompt = """
+        You are writing a personal knowledge digest for a senior DevOps engineer 
+        interested in AI and MLOps. Write like a knowledgeable colleague sharing 
+        what they learned today, not a marketer. Be specific and technical.
+
+        The editor will provide feedback, if given follow it exactly and update your previous draft.
+    """
     user_prompt = f"""
-        Given a list of summarized articles and the date, write a markdown formatted newsletter in the following format:
-        - Header with the {pacific_string_formatted} and some title relating to a key story or theme
-        - One highlighted story that goes into some more depth
-        - Several minor stories
-        - Each story should have a link in the title like [Title](link/to/source)
-        
+        Write a markdown newsletter for {date} using the articles below.
+
+        Format:
+        # [Thematic title] | {date}
+
+        ## 🔥 Story of the Day
+        ### [Title](link) — Source
+        3-4 paragraphs. Cover what happened, why it matters, and one concrete 
+        technical detail worth remembering.
+
+        ## ⚡ Quick Hits
+        ### [Title](link) — Source
+        3-4 sentences of actual substance. No filler phrases like "in this article 
+        the author discusses". Just the information.
+
+        (repeat for each article)
+
+        ---
+        *[article count] stories • {date}*
+
+        Rules:
+        - Only use articles from the provided list, do not invent stories
+        - Every title must be a markdown link
+        - No marketing language or filler phrases
+        - If an article has thin content, keep it short rather than padding it
+
         ARTICLES:
         {articles}
 
-        if feedback is provided then use it to refine your draft:
+        FEEDBACK:
         {feedback}
 
-        Return ONLY the markdown formatted newsletter you wrote.
+        PREVIOUS DRAFT:
+        {previous_draft}
+
+        Return ONLY the markdown.
     """
 
     response = chat_with_ollama(WRITER_MODEL, system_prompt, user_prompt)
@@ -205,14 +238,19 @@ def writer(articles: str, feedback:str | None) -> str:
 def editor(draft: str) -> str:
     """Take draft newsletter and provide feedback, if no edits, return LGTM!"""
     system_prompt = """
-        You are a technical newsletter editor, be precise and follow instructions exactly. 
-        If the draft looks good enough without glaring omissions or issues, simply respond with 'LGTM'.
-        Otherwise respond ONLY with the feedback for the writer.
+        You are editing a personal technical digest. Respond with LGTM if the draft 
+        is solid. Otherwise give specific actionable feedback only — no examples, 
+        no rewrites, just clear instructions for the writer.
     """
     user_prompt = f"""
-        Given a draft of a newsletter focused on AI / ML and DevOps, provide critical feedback that improves the form and
-        readability of the newsletter. Make sure it's good for a 'coffee read' in the morning for a DevOps Engineer wanting to
-        keep up to date on the latest trends and releases in AI.
+        Review this newsletter draft for a DevOps/MLOps engineer. Check:
+        - Does every story have a markdown link?
+        - Is the Story of the Day substantively deeper than the Quick Hits?
+        - Are there any filler phrases like "in this article the author discusses"?
+        - Does any story appear to be invented rather than sourced from real content?
+        - Is it worth reading over morning coffee?
+
+        Respond with LGTM or specific feedback only.
 
         DRAFT:
         {draft}
@@ -243,13 +281,13 @@ def main():
 
     final = ""
     draft = ""
-    feedback = None
+    feedback = ""
     revisions = 0
     raw_articles = ingest_rss_feeds()
     curated_articles = researcher(raw_articles)
 
     while not ready_to_publish and revisions < MAX_REVISIONS:
-        draft = writer(curated_articles, feedback)
+        draft = writer(curated_articles, draft, feedback)
         feedback = editor(draft)
         if feedback.strip() == "LGTM":
             ready_to_publish = True
