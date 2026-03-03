@@ -14,6 +14,7 @@ TODO:
 - [ ] Speedup ingest_rss_feeds
 - [ ] Experiment tracking for different models/prompts
 - [ ] Map reduce for articles researcher needs to summarize them for the writer
+- [ ] Refactor ingest_rss_feeds to return a list[dict] directly instead of dict[str, list]
 """
 
 import feedparser
@@ -35,23 +36,6 @@ logging.basicConfig(format=FORMAT,level=LOG_LEVEL)
 current_utc_time = datetime.now(UTC)
 logging.info(f"Current UTC time {current_utc_time}")
 
-def build_researcher_prompt(interests: list[str], articles: list[dict[str]]) -> str:
-    prompt = f"""You are a researcher of news stories for an AI / ML Ops professional interested in the following topics: {interests}. 
-    Specifically focus on new technology or product releases, workflows, techniques, or otherwise 'technical' content rather than social or political.
-    Given a list of articles in the following format:
-            "source": source,
-            "title": entry.title,
-            "summary": entry.summary,
-            "link": entry.link
-    
-    Please return the links to articles that you have selected based on the criteria. 
-    Return ONLY a JSON array of selected article links, nothing else. Example format:
-["https://...", "https://..."]
-    
-    ARTICLES:
-    {articles}
-    """
-    return prompt
 
 def chat_with_ollama(model_name: str, system_prompt:str, user_prompt:str) -> dict | None:
     """Sends a chat to a model with a prompt"""
@@ -92,21 +76,60 @@ def ingest_rss_feeds() -> dict:
     return results
 
 
-def researcher(raw_articles: dict) -> list[dict] | None:
+def build_researcher_prompt(interests: list[str], articles: list[dict[str]]) -> str:
+    prompt = f"""You are a researcher of news stories for an AI / ML Ops professional interested in the following topics: {interests}. 
+    Specifically focus on new technology or product releases, workflows, techniques, or otherwise 'technical' content rather than social or political.
+    Given a list of articles in the following format:
+            "source": source,
+            "title": entry.title,
+            "summary": entry.summary,
+            "link": entry.link
+    
+    Please return the links to articles that you have selected based on the criteria. 
+    Return ONLY a JSON array of selected article links, nothing else. Example format:
+["https://...", "https://..."]
+    
+    ARTICLES:
+    {articles}
+    """
+    return prompt
+
+
+def summarize_article(article: dict):
+    unpacked_content = article.get('content', [{}])[0].get('value', '') or article.get('summary', 'NO CONTENT')[:3000]
+    system_prompt = "You are a precise newsletter researcher. Follow instructions exactly. Return only what is asked."
+    user_prompt = f"Read the following article content and return ONLY a summary of what you read. ARTICLE: {unpacked_content}"
+    response = chat_with_ollama(RESEARCHER_MODEL, system_prompt, user_prompt)
+
+    summary = response.message.content
+    logging.debug(f"Summary of {article.get('title')}\n\t{summary}")
+
+    summarized = {
+        "source": article.get('source', 'NO SOURCE'),
+        "title": article.get('title', 'NO TITLE'),
+        "summary": summary,
+        "link": article.get('link', 'NO LINK')
+    }
+    return summarized
+
+
+def researcher(raw_articles: list[dict]) -> list[dict] | None:
     """Refine article results into best candidates"""
     trimmed = [
         {
             "source": source,
             "title": entry.get('title', 'NO TITLE'),
             "summary": entry.get('summary','NO SUMMARY'),
+            "content": entry.get('content', 'NO CONTENT'),
             "link": entry.get('link', 'NO LINK')
         } 
         for source, entries in raw_articles.items()
         for entry in entries 
     ]
-    researcher_prompt = build_researcher_prompt(INTERESTS, json.dumps(trimmed))
+
+    trimmed_for_curation = [{k: a[k] for k in ('source','title','summary','link')} for a in trimmed]
+    researcher_prompt = build_researcher_prompt(INTERESTS, json.dumps(trimmed_for_curation))
     system_prompt = "You are a precise newsletter researcher. Follow instructions exactly. Return only what is asked."
-    #logging.debug(f"researcher Prompt: {researcher_prompt}")
     response = ""
     try:
         response = chat_with_ollama(RESEARCHER_MODEL, system_prompt, researcher_prompt)
@@ -117,7 +140,9 @@ def researcher(raw_articles: dict) -> list[dict] | None:
         curated_links = json.loads(response.message.content)
         logging.debug(f"researcher links: {curated_links}")
         curated_articles = [a for a in trimmed if a.get('link') in curated_links]
-        return curated_articles
+        
+        summarized_articles = [summarize_article(a) for a in curated_articles]
+        return summarized_articles
     except Exception as e:
         logging.error(f"Caught exception loading response as JSON: {e}")
         return None
