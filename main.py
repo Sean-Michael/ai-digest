@@ -11,8 +11,10 @@ from datetime import datetime, timedelta, UTC
 from time import mktime
 import json
 import ollama
+from typing import List
 
 MAX_REVISIONS = 3
+INTERESTS = ["AI", "ML", "MLOps", "AI Engineering", "DevOps", "Kubernetes", "NVIDIA", "LangChain", "Agents", "Anthropic", "Claude Code"]
 
 FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 LOG_LEVEL = logging.DEBUG
@@ -21,6 +23,19 @@ logging.basicConfig(format=FORMAT,level=LOG_LEVEL)
 
 current_utc_time = datetime.now(UTC)
 logging.info(f"Curren UTC time {current_utc_time}")
+
+def build_curator_prompt(interests: List[str]) -> str:
+    prompt = f"""You are a curator of news stories for an AI / ML Ops professional interested in the following topics: {interests}. 
+    Specifically focus on new technology or product releases, workflows, techniques, or otherwise 'technical' content rather than social or political.
+    Given a list of article sources and titles, please return only the exact source and titles that fulfill the criteria."""
+
+    return prompt
+
+def chat_with_article(model_name: str, prompt:str, article: dict, history: str | None) -> dict | None:
+    """Sends a chat to a model with article as context and a prompt and optional history"""
+    message = prompt + article + 
+    ollama.chat(model=model_name, messages=message)
+
 
 
 def ingest_rss_feeds() -> dict:
@@ -50,6 +65,9 @@ def curator(raw_articles: dict) -> str:
     for source, entries in raw_articles.items():
         for entry in entries:
             logging.info(f"Curator reading {source} article: {entry.get('title')}")
+
+    curator_prompt = build_curator_prompt(INTERESTS)
+
 
     curated_articles = None
     return curated_articles
