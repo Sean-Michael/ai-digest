@@ -302,11 +302,8 @@ def main():
     logging.info(f"Agent loop finished in {revisions} iterations.")
 
     metadata = f"""
-    ## Meet your writing team!
-    
-    Researcher: {RESEARCHER_MODEL}
-    Writer: {WRITER_MODEL}
-    Editor: {EDITOR_MODEL}
+    ---
+    *Researcher: {RESEARCHER_MODEL} • Writer: {WRITER_MODEL} • Editor: {EDITOR_MODEL}*
     """
     final_copy = final + metadata
     write_newsletter(final_copy)
