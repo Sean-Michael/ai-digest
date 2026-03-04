@@ -25,11 +25,10 @@ import json
 import re
 import ollama
 from zoneinfo import ZoneInfo
-from concurrent.futures import ThreadPoolExecutor
 
-RESEARCHER_MODEL = "qwen3.5:4b"
-WRITER_MODEL = "qwen3.5:4b"
-EDITOR_MODEL = "qwen3.5:4b"
+RESEARCHER_MODEL = "qwen3.5:2b"
+WRITER_MODEL = "qwen3.5:2b"
+EDITOR_MODEL = "qwen3.5:2b"
 MAX_REVISIONS = 3
 TIMEFRAME_HOURS = 24
 INTERESTS = [
@@ -40,7 +39,7 @@ INTERESTS = [
 ]
 
 FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 
 logging.basicConfig(format=FORMAT,level=LOG_LEVEL)
 
@@ -162,15 +161,14 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
         logging.error(f"Caught Exception: {e}")
 
     try: 
-        curated_links = json.loads(response.message.content)
+        curated_links = list(set(json.loads(response.message.content)))
         logging.debug(f"researcher links: {curated_links}")
         curated_articles = [a for a in trimmed if a.get('link') in curated_links]
         logging.debug(f"curated_articles: {curated_articles}")
         logging.info(f"Researcher curated {len(curated_articles)} articles")
         
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            summarized_articles = list(executor.map(summarize_article, curated_articles))
+        summarized_articles = [summarize_article(a) for a in curated_articles]
         logging.info(f"Researcher summarized {len(summarized_articles)} articles")
         return summarized_articles
     except Exception as e:
@@ -180,6 +178,7 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
 
 def writer(articles: str, previous_draft:str | None, feedback:str | None) -> str:
     """Take curated articles and generate a Newsletter.MD"""
+    logging.info(f"Writer recieved {len(articles)} articles.")
     now_pacific = datetime.now(ZoneInfo("America/Los_Angeles"))
     date = now_pacific.strftime("%Y-%m-%d")
     newsletter = ""
@@ -302,9 +301,10 @@ def main():
     logging.info(f"Agent loop finished in {revisions} iterations.")
 
     metadata = f"""
-    ---
-    *Researcher: {RESEARCHER_MODEL} • Writer: {WRITER_MODEL} • Editor: {EDITOR_MODEL}*
-    """
+
+---
+*Researcher: {RESEARCHER_MODEL} • Writer: {WRITER_MODEL} • Editor: {EDITOR_MODEL}*
+"""
     final_copy = final + metadata
     write_newsletter(final_copy)
 
