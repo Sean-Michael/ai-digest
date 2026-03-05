@@ -282,15 +282,6 @@ def editor(draft: str) -> str:
     return feedback
 
 
-def get_s3_client():
-    try:
-        return boto3.client("s3", region_name=AWS_REGION)
-    except Exception as e:
-        logging.error(f"Failed to create S3 client: {e}")
-        raise
-
-
-
 # Below function taken from AWS documentation for boto3 sdk docs
 def upload_file(file_name, bucket, object_name=None):
     """Upload a file to an S3 bucket
@@ -306,7 +297,7 @@ def upload_file(file_name, bucket, object_name=None):
         object_name = os.path.basename(file_name)
 
     # Upload the file
-    s3_client = boto3.client('s3')
+    s3_client = boto3.client('s3', region_name=AWS_REGION)
     try:
         response = s3_client.upload_file(file_name, bucket, object_name)
     except ClientError as e:
@@ -327,7 +318,11 @@ def write_newsletter(final: str) -> None:
         written = file.write(final)
     if written > 0:
         object_name = "digests/" + filename
-        upload_file(filename,S3_CONTENT_BUCKET,object_name)
+        uploaded = upload_file(filename,S3_CONTENT_BUCKET,object_name)
+        if uploaded:
+            logging.info(f"Uploaded {object_name} to s3://{S3_CONTENT_BUCKET}")
+        else:
+            logging.error(f"Failed to upload {object_name} to s3://{S3_CONTENT_BUCKET}")
     else:
         logging.error("Wrote an empty file, no upload to s3..")
         exit(1)
@@ -347,6 +342,7 @@ def main():
     curated_articles = researcher(raw_articles)
     if not curated_articles:
         logging.error(f"Researcher returned no articles - or no valid JSON, got: {curated_articles}")
+        return
     logging.info(f"Passing {len(curated_articles)} articles to writer: {[a['source'] + ' - ' + a['title'][:40] for a in curated_articles]}")
     while not ready_to_publish and revisions < MAX_REVISIONS:
         draft = writer(curated_articles, draft, feedback)
