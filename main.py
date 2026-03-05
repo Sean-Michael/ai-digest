@@ -28,6 +28,11 @@ import json
 import re
 import ollama
 from zoneinfo import ZoneInfo
+import boto3
+from pathlib import Path
+from botocore.exceptions import ClientError
+import os
+
 
 RESEARCHER_MODEL = "qwen3.5:9b"
 WRITER_MODEL = "qwen3.5:9b"
@@ -41,6 +46,10 @@ INTERESTS = [
     "AMD", "Intel", "Hugging Face", "PyTorch", "Ollama", "vLLM", "MCP", "RAG", "vector databases",
     "OpenAI", "Gemini", "Mistral", "Qwen", "Terraform", "ArgoCD", "GitOps"
 ]
+
+S3_CONTENT_BUCKET = os.getenv("S3_CONTENT_BUCKET", "smr-webdev-content")
+AWS_REGION = os.getenv("AWS_REGION", "us-west-2")
+
 
 FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 LOG_LEVEL = logging.DEBUG
@@ -273,6 +282,39 @@ def editor(draft: str) -> str:
     return feedback
 
 
+def get_s3_client():
+    try:
+        return boto3.client("s3", region_name=AWS_REGION)
+    except Exception as e:
+        logging.error(f"Failed to create S3 client: {e}")
+        raise
+
+
+
+# Below function taken from AWS documentation for boto3 sdk docs
+def upload_file(file_name, bucket, object_name=None):
+    """Upload a file to an S3 bucket
+
+    :param file_name: File to upload
+    :param bucket: Bucket to upload to
+    :param object_name: S3 object name. If not specified then file_name is used
+    :return: True if file was uploaded, else False
+    """
+
+    # If S3 object_name was not specified, use file_name
+    if object_name is None:
+        object_name = os.path.basename(file_name)
+
+    # Upload the file
+    s3_client = boto3.client('s3')
+    try:
+        response = s3_client.upload_file(file_name, bucket, object_name)
+    except ClientError as e:
+        logging.error(e)
+        return False
+    return True
+
+
 def write_newsletter(final: str) -> None:
     """
     Save a dated article with a generated title to S3
@@ -280,8 +322,16 @@ def write_newsletter(final: str) -> None:
     """
     now_pacific = datetime.now(ZoneInfo("America/Los_Angeles"))
     pacific_string_formatted = now_pacific.strftime("%Y-%m-%d")
-    with open(f"{pacific_string_formatted}-Newsletter.md", "w") as file:
-        file.write(final)
+    filename = pacific_string_formatted + "-Newsletter.md"
+    with open(filename, "w") as file:
+        written = file.write(final)
+    if written > 0:
+        object_name = "digests/" + filename
+        upload_file(filename,S3_CONTENT_BUCKET,object_name)
+    else:
+        logging.error("Wrote an empty file, no upload to s3..")
+        exit(1)
+        
     return
 
 
