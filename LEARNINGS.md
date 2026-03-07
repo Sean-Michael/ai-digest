@@ -53,3 +53,15 @@ Big improvement over the failed 4B run. Comparing to yesterday's 9B MacBook outp
 - Good topic diversity: storage, agents, security, models, MLOps
 
 Overall I would call that a success. Something funny is there is a story that was also in yesterdays generated report. I need to add a DB with some sort of memory on like the past week or maybe 30 days of stories so it doesn't go repeating itself. The editor could access that or maybe the curator actually .. get new stories only.
+
+## 3/6/26
+
+I did some minor updates to the prompt for the writer and editor. It seems like qwen3.5 had to be told more than once to format links in the correct way for Markdown hyperlinks. I think it finally got it this time. The key was the explicit instructions not just the example, I included the following in the writer's prompt:
+
+```txt
+- For title links, enclose the link text in square brackets [] and immediately follow it with the URL in parentheses ()
+```
+
+The results were pretty awesome, I actually liked reading this morning's edition and I feel like I learned some things and went and read some of the original articles that were of greater interest to me.
+
+I really need to get MLFlow cooking and the runs of this automated so I can do some more precise experimentation and evaluations.
