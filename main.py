@@ -33,6 +33,10 @@ from pathlib import Path
 from botocore.exceptions import ClientError
 import os
 
+# Boolean to control wether or not the generated newsletter is 'published' by uploading to s3
+PUBLISH = True
+
+DATE_STR = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
 
 RESEARCHER_MODEL = "qwen3.5:9b"
 WRITER_MODEL = "qwen3.5:9b"
@@ -195,8 +199,6 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
 def writer(articles: str, previous_draft:str | None, feedback:str | None) -> str:
     """Take curated articles and generate a Newsletter.MD"""
     logging.info(f"Writer recieved {len(articles)} articles.")
-    now_pacific = datetime.now(ZoneInfo("America/Los_Angeles"))
-    date = now_pacific.strftime("%Y-%m-%d")
     newsletter = ""
     if feedback is None:
         feedback = ""
@@ -209,10 +211,10 @@ def writer(articles: str, previous_draft:str | None, feedback:str | None) -> str
         The editor will provide feedback, if given follow it exactly and update your previous draft.
     """
     user_prompt = f"""
-        Write a markdown newsletter for {date} using the articles below.
+        Write a markdown newsletter for {DATE_STR} using the articles below.
 
         Format:
-        # [Thematic title] | {date}
+        # [Thematic title] | {DATE_STR}
 
         ## 🔥 Story of the Day
         ### [Title](link) — Source
@@ -253,8 +255,6 @@ def writer(articles: str, previous_draft:str | None, feedback:str | None) -> str
 
 def editor(draft: str) -> str:
     """Take draft newsletter and provide feedback, if no edits, return LGTM!"""
-    now_pacific = datetime.now(ZoneInfo("America/Los_Angeles"))
-    pacific_string_formatted = now_pacific.strftime("%Y-%m-%d")
 
     system_prompt = """
         You are editing a personal technical digest. Respond with LGTM if the draft 
@@ -262,7 +262,7 @@ def editor(draft: str) -> str:
         no rewrites, just clear instructions for the writer.
     """
     user_prompt = f"""
-        Today's date is {pacific_string_formatted}
+        Today's date is {DATE_STR}
         Review this newsletter draft for a DevOps/MLOps engineer. Check:
         - Does every story have a markdown link? Do not fact check URL content just that they exist and are of the correct format 
         - Links should be in this format for proper MD hyperlink (LINK_TEXT)[URL]
@@ -329,15 +329,13 @@ def write_newsletter(final: str) -> None:
     """
     Add frontmatter, save locally, and upload to S3.
     """
-    now_pacific = datetime.now(ZoneInfo("America/Los_Angeles"))
-    date_str = now_pacific.strftime("%Y-%m-%d")
 
     title = extract_title(final)
     slug = make_slug(title)
 
     frontmatter = f"""---
 title: "{title}"
-date: {date_str}
+date: {DATE_STR}
 ---
 """
     full_content = frontmatter + final
@@ -345,7 +343,7 @@ date: {date_str}
 
     with open(filename, "w") as file:
         written = file.write(full_content)
-    if written > 0:
+    if written > 0 and PUBLISH:
         object_name = "digests/" + filename
         uploaded = upload_file(filename, S3_CONTENT_BUCKET, object_name)
         if uploaded:
@@ -361,10 +359,13 @@ def main():
     """Main execution loop"""
     ready_to_publish = False
 
+
+
     final = ""
     draft = ""
     feedback = ""
     revisions = 0
+    base_filename = datetime
     raw_articles = ingest_rss_feeds()
     curated_articles = researcher(raw_articles)
     if not curated_articles:
@@ -373,6 +374,7 @@ def main():
     logging.info(f"Passing {len(curated_articles)} articles to writer: {[a['source'] + ' - ' + a['title'][:40] for a in curated_articles]}")
     while not ready_to_publish and revisions < MAX_REVISIONS:
         draft = writer(curated_articles, draft, feedback)
+        with open()
         feedback = editor(draft)
         if feedback.strip() == "LGTM":
             ready_to_publish = True
