@@ -65,3 +65,18 @@ I did some minor updates to the prompt for the writer and editor. It seems like 
 The results were pretty awesome, I actually liked reading this morning's edition and I feel like I learned some things and went and read some of the original articles that were of greater interest to me.
 
 I really need to get MLFlow cooking and the runs of this automated so I can do some more precise experimentation and evaluations.
+
+
+## 3/8/26
+
+The issues with the link format seem to be somewhat transient, not sure exactly where in the process the formatting is getting dropped. Perhaps I need to just write some strict post-processing formatter that does some regex to fix the output. 
+
+Also, it seems that despite instructions the writer is selecting articles with almost no substance in their content. The solution here is two-fold:
+1. A more strict Judge/Editor (perhaps a new judge external to this system for evals)
+2. A mechanism by which the researcher can fetch http and enrich the content with more valuable information when there isn't any. 
+
+In fact getting the source material could be a parallelized step for each article to ensure the best quality. Feeding every single article in one prompt or even a few would probably be a waste. Instead I'm thinking about giving the model a prompt to assign some kind of numerical ranking on a 1 - 5 scale on how 'important' or relevant an article is, then hand the top 10 or so off to the writer. Details details..
+
+I think what I really need to do is start tracking each revision of the newsletter draft along with the feedback by writing it to a file. Then, I can add in some tracing with MLFlow and use those alongside the prompts and everything as an artifact, before I go significantly changing the system.
+
+Another idea I had is using a more powerful model like Claude periodically to provide feedback on the newsletter.. could be a good judge?
