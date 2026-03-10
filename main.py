@@ -38,6 +38,11 @@ import os
 # Boolean to control wether or not the generated newsletter is 'published' by uploading to s3
 PUBLISH = False
 
+DATE_STR = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
+
+BASE_PATH = Path(__file__).parent
+DRAFT_DIR = BASE_PATH / 'drafts' / DATE_STR
+DIGEST_DIR = BASE_PATH / 'digests'
 
 RESEARCHER_MODEL = "qwen3.5:9b"
 WRITER_MODEL = "qwen3.5:9b"
@@ -65,7 +70,7 @@ current_utc_time = datetime.now(UTC)
 logging.info(f"Current UTC time {current_utc_time}")
 
 
-def chat_with_ollama(model_name: str, system_prompt:str, user_prompt:str, think:bool = False, options={"num_ctx":NUM_CTX}) -> ChatResponse:
+def chat_with_ollama(model_name: str, system_prompt:str, user_prompt:str, think:bool = False, options=None) -> ChatResponse:
     """Sends a chat to a model with a prompt"""
     message = [
         {
@@ -78,7 +83,14 @@ def chat_with_ollama(model_name: str, system_prompt:str, user_prompt:str, think:
         }
     ]
     start = perf_counter()
-    response = chat(model=model_name, messages=message, think=think, options=options)
+
+    response = chat(
+        model=model_name, 
+        messages=message, 
+        think=think, 
+        options=options or {"num_ctx": NUM_CTX}
+        )
+    
     finish = perf_counter()
     logging.debug(f"Response from Ollama: {response}")
     logging.info(f"Chat finished in {finish - start}s")
@@ -186,6 +198,7 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
         response = chat_with_ollama(RESEARCHER_MODEL, system_prompt, researcher_prompt, think=False)
     except Exception as e:
         logging.error(f"Caught Exception: {e}")
+        return None
 
     try: 
         curated_links = list(set(json.loads(response.message.content)))
@@ -325,7 +338,7 @@ def extract_title(newsletter_md: str) -> str:
     for line in newsletter_md.splitlines():
         line = line.strip()
         if line.startswith("# "):
-            return line.lstrip("# ").strip()
+            return line.removeprefix("# ").strip()
     return "AI Newsletter"
 
 
@@ -351,33 +364,25 @@ date: {DATE_STR}
 ---
 """
     full_content = frontmatter + final
-    filename = DIGEST_DIR + slug + ".md"
+    filename = DIGEST_DIR / slug / ".md"
 
     with open(filename, "w") as file:
         written = file.write(full_content)
-    if written > 0 and PUBLISH:
-        object_name = "digests/" + filename
-        uploaded = upload_file(filename, S3_CONTENT_BUCKET, object_name)
-        if uploaded:
-            logging.info(f"Uploaded {object_name} to s3://{S3_CONTENT_BUCKET}")
-        else:
-            logging.error(f"Failed to upload {object_name} to s3://{S3_CONTENT_BUCKET}")
+    if written > 0:
+        if PUBLISH:
+            object_name = "digests/" / filename
+            uploaded = upload_file(filename, S3_CONTENT_BUCKET, object_name)
+            if uploaded:
+                logging.info(f"Uploaded {object_name} to s3://{S3_CONTENT_BUCKET}")
+            else:
+                logging.error(f"Failed to upload {object_name} to s3://{S3_CONTENT_BUCKET}")
     else:
-        if not PUBLISH:
-            logging.info("Publish to s3 disabled")
-            return
-        logging.error("Wrote an empty file, no upload to s3..")
+        logging.error("Wrote an empty file..")
         exit(1)
 
 
 def main():
     """Main execution loop"""
-
-    DATE_STR = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
-
-    BASE_PATH = Path(__file__).parent
-    DRAFT_DIR = BASE_PATH / 'drafts' / DATE_STR
-    DIGEST_DIR = BASE_PATH / 'digests'
 
     for d in [DRAFT_DIR, DIGEST_DIR]:
         os.makedirs(d, exist_ok=True)
@@ -399,12 +404,12 @@ def main():
     while not ready_to_publish and revisions < MAX_REVISIONS:
         start_revision = perf_counter()
         draft = writer(curated_articles, draft, feedback)
-        draft_filename = DRAFT_DIR + 'draft-' + str(revisions)
+        draft_filename = DRAFT_DIR / 'draft-' / str(revisions)
         
         with open(draft_filename, "w") as draft_file:
             draft_file.write(draft)
         feedback = editor(draft)
-        edit_filename = DRAFT_DIR + 'edits-' + str(revisions)
+        edit_filename = DRAFT_DIR / 'edits-' / str(revisions)
         
         with open(edit_filename, "w") as edit_file:
             edit_file.write(feedback)
