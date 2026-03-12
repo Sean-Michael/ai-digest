@@ -19,6 +19,7 @@ TODO:
 - [ ] Logging to file and formatted
 - [ ] Pull in system logs with some orchestrator script or something like journalctl ollama and nvidia
 - [ ] Change environment vars to click CLI options
+- [ ] Add HTTP page request and parse tool call
 """
 
 import feedparser
@@ -96,6 +97,10 @@ def chat_with_ollama(model_name: str, system_prompt:str, user_prompt:str, think:
     logging.info(f"Chat finished in {finish - start}s")
     return response
 
+
+def fetch_article():
+    """Fetches an article by URL over HTTP and parses HTML output."""
+    pass
 
 def ingest_rss_feeds() -> dict:
     """Parse RSS feeds and return dictionary of information"""

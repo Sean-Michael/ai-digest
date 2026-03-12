@@ -8,4 +8,5 @@ dependencies = [
     "boto3>=1.42.61",
     "feedparser>=6.0.12",
     "ollama>=0.6.1",
+    "requests>=2.32.5",
 ]
