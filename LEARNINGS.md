@@ -88,3 +88,9 @@ Another idea I had is using a more powerful model like Claude periodically to pr
 Added a local file saving so that the drafts and revisions from the editorial loop are captured for future artifact tracking. 
 
 I updated the prompts a bit so the Editor is better at just responding LGTM and not providining aditional feedback that gets ignored because of how i've constructed the loop. But it seems like it favors just doing one pass since the first iteration from qwen3.5 is actually quite good which I agree on but I wonder if I should add some revision count context awareness to the editor call? Like "this is your n-th revision, the max is k" and have it be more skeptical early on to increase the chance of more revisions?
+
+# 3/12/26
+
+I wonder how much the editor is actually helping here. After setting up file writes for every edit and draft it's funny to see the editor accuse the writer of hallucinating content because it hallucinated that the content is fake, even alluding to how it checked and verified when I have given it no ability to do so just yet ... 
+
+Obiously that's pretty high on my list for the editor to be able to use an MCP tool too pull down an article it thinks is suspicious. It also has a hard time understanding what the date is even though I've presented it in the prompt. 

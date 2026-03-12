@@ -35,7 +35,7 @@ from botocore.exceptions import ClientError
 import os
 
 
-# Boolean to control wether or not the generated newsletter is 'published' by uploading to s3
+# Boolean to control wether or not the generated digest is 'published' by uploading to s3
 PUBLISH = True
 
 DATE_STR = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
@@ -192,7 +192,7 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
 
     trimmed_for_curation = [{k: a[k] for k in ('source','title','summary','link')} for a in trimmed]
     researcher_prompt = build_researcher_prompt(INTERESTS, json.dumps(trimmed_for_curation))
-    system_prompt = "You are a precise newsletter researcher. Follow instructions exactly. Return only what is asked."
+    system_prompt = "You are a precise news researcher. Follow instructions exactly. Return only what is asked."
     response = ""
     try:
         response = chat_with_ollama(RESEARCHER_MODEL, system_prompt, researcher_prompt, think=False)
@@ -218,7 +218,7 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
         return None
 
 
-def writer(articles: str, previous_draft:str | None, feedback:str | None) -> str:
+def writer(articles: str, previous_draft:str | None, feedback:str | None) -> str | None:
     """Take curated articles and generate a Newsletter.MD"""
     logging.info(f"Writer recieved {len(articles)} articles.")
     newsletter = ""
@@ -233,7 +233,7 @@ def writer(articles: str, previous_draft:str | None, feedback:str | None) -> str
         The editor will provide feedback, if given follow it exactly and update your previous draft.
     """
     user_prompt = f"""
-        Write a markdown newsletter for {DATE_STR} using the articles below.
+        Write a markdown news digest for {DATE_STR} using the articles below.
 
         Format:
         # [Thematic title] | {DATE_STR}
@@ -275,7 +275,7 @@ def writer(articles: str, previous_draft:str | None, feedback:str | None) -> str
     return newsletter
 
 
-def editor(draft: str) -> str:
+def editor(draft: str) -> str | None:
     """Take draft newsletter and provide feedback, if no edits, return LGTM!"""
 
     system_prompt = """
@@ -288,9 +288,9 @@ def editor(draft: str) -> str:
     """
     user_prompt = f"""
         Today's date is {DATE_STR}
-        Review this newsletter draft for a DevOps/MLOps engineer. Check:
+        Review this morning news digest draft for a DevOps/MLOps engineer. Check:
         - Does every story have a markdown link? Do not fact check URL content just that they exist and are of the correct format 
-        - Links should be in this format for proper MD hyperlink (LINK_TEXT)[URL]
+        - For Markdown hyperlinks, enclose the link text in square brackets [] and immediately follow it with the URL in parentheses ()
         - Is the Story of the Day substantively deeper than the Quick Hits?
         - Are there any filler phrases like "in this article the author discusses"?
         - Does any story appear to be invented rather than sourced from real content?
@@ -309,7 +309,6 @@ def editor(draft: str) -> str:
     return feedback
 
 
-# Below function taken from AWS documentation for boto3 sdk docs
 def upload_file(file_name, bucket, object_name=None):
     """Upload a file to an S3 bucket
 
@@ -378,6 +377,7 @@ date: {DATE_STR}
             return
 
     if PUBLISH:
+        filename = f"digests/{slug}.md"
         uploaded = upload_file(filename, S3_CONTENT_BUCKET)
         if uploaded:
             logging.info(f"Uploaded {filename} to s3://{S3_CONTENT_BUCKET}")

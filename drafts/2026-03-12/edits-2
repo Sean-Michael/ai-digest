@@ -1,0 +1,6 @@
+- Story of the Day contains an invalid Markdown link. The text is followed by `(Docker Blog)` instead of the required URL in parentheses. Ensure the format is `Text [URL]` or `[Text](URL)`.
+- Quick Hits section violates the formatting rule: links are written as `Text — [URL]` instead of `Text [URL]`. Move the text inside square brackets and place only the URL in parentheses immediately after.
+- One link in the "Show HN" entry points to a GitHub repository (`https://github.com/onecli/onecli`) but is formatted as a generic external link. Verify if this should be a standard Markdown hyperlink or if a direct GitHub raw link was intended; if it acts as a headline link, ensure the URL follows the text correctly without the word "Repository" in parentheses unless it is part of the display text (currently missing display text).
+- The Nvidia News story link (`https://openai.com/index/nvidia-launches-nemotron-3-super/`) points to `openai.com`. Unless Nvidia actually posted this story on the OpenAI blog or domain, correct the source URL to match the actual publication location.
+- Check for filler phrases. The phrase "This content emphasizes" in the prompt injection story should be removed; rewrite as a direct statement of necessity.
+- Ensure every item in Quick Hits follows the `[Text](URL)` pattern strictly before printing.
