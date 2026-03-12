@@ -1,98 +1,282 @@
-Found 1 <p> text
-Something shifted recently with
-agentic engineering
-that “feels” like the level of abstraction changed again. Not the usual kind of shift where tools get marginally better and workflows gradually evolve. A step change. Developers who have been writing software for decades are describing it the same way: the center of gravity of the craft moved.
-The most useful thing you can do right now is hold two ideas in tension simultaneously.
-Coding has changed dramatically. Software engineering, at its core, has not.
-That gap between the two is where the interesting story lives, and understanding it clearly is the difference between engineers who thrive in this era and engineers who get left behind by it.
-I was reading Michael Truell (of Cursor’s)
-thoughts
-on this and wanted to expand on them.
-The arc of abstractions
-The history of software engineering is the history of raising abstraction.
-We moved from bits to instructions, from instructions to functions, from functions to objects, from objects to services, from services to distributed systems. Every jump in the stack made individual developers more productive and expanded the total population of people who could participate in building software.
-Assembly gave way to C. C gave way to managed languages and garbage collection. Managed languages gave way to frameworks, package ecosystems, and cloud infrastructure. Each transition felt disruptive at the time. Each one, in hindsight, was simply the next step in a long and consistent arc.
-What we are living through right now is another step in that same arc. We are moving from writing code to orchestrating systems that write code.
-This framing was articulated by Grady Booch, who refers to it as
-software’s third age
-— a new golden era defined by rising abstraction, where the job of the developer shifts from writing instructions to defining intent.
-That framing matters because it tells you what to hold onto and what to let go of.
-Three generations of AI coding tools
-It helps to be precise about the progression, because conflating the generations leads to underestimating how much has actually changed.
-The first generation was accelerated autocomplete
-. Tools that predicted the next line, filled in boilerplate, and saved keystrokes on repetitive patterns. Useful. Genuinely time-saving. But the workflow stayed identical to what it had always been: you drove, the tool assisted. The feedback loop was: write code, run it, debug, repeat. The AI just reduced friction inside that loop.
-The second generation introduced synchronous agents
-. You described a task in natural language. The model generated code. You reviewed it, corrected it, iterated toward a working result. This moved further up the stack. Less typing, more describing intent. But you were still present for every step. The agent was a collaborator, not an autonomous worker. You held the context, directed the next move, and caught mistakes in real time.
-The third generation introduced autonomous agents
-. These agents can take a specification and run with it for thirty minutes, an hour, several hours and increasingly days. They set up environments, install dependencies, write tests, hit failures, research solutions online, fix the failures, write the implementation, test it again, set up services, and produce artifacts you can review. You hand them a task, move on to something else, and come back to logs, previews, and pull requests. You are no longer interacting line by line. You are defining outcomes and reviewing results. This is where
-swarms of agents
-and even
-self-improving agents
-come into play.
-That changes the cadence of work in ways that are hard to fully communicate until you experience it. Tasks that were weekend projects three months ago are now something you kick off and check on thirty minutes later.
-The Factory Mental Model
-The most useful mental model for this new paradigm is that you are no longer just writing code. You are building the factory that builds your software.
-That factory consists of fleets of agents. Each agent has a task, a toolbelt (repositories, test runners, deployment scripts, documentation), context (specs, architecture decisions, prior constraints), and a feedback loop. Instead of hand-holding a single agent through a single task, you spin up many agents in parallel. One handles backend refactors. Another implements a feature. Another writes integration tests. Another updates documentation. You review outputs, give feedback, refine specs, and redeploy.
-The analogy runs deeper than it might first appear. A factory has quality control. A factory has process documentation. A factory has inputs that need to be precisely specified or the outputs come out wrong. A factory stalls when the environment is unreliable. All of these properties map directly onto agentic software development, and taking the analogy seriously points you toward the investments that actually matter.
-Inside teams that have adopted this model aggressively, a substantial portion of merged pull requests now originate from agents running autonomously in cloud environments. That is not theoretical anymore. It is production reality for a growing number of engineering organizations.
+URL: https://www.anthropic.com/engineering/building-c-compiler
+
+CONTENT:
+ Written by Nicholas Carlini, a researcher on our Safeguards team.
+I've been experimenting with a new approach to supervising language models that we’re calling "agent teams."
+With agent teams, multiple Claude instances work in parallel on a shared codebase without active human intervention. This approach dramatically expands the scope of what's achievable with LLM agents.
+To stress test it, I tasked 16 agents with writing a Rust-based C compiler, from scratch, capable of compiling the Linux kernel. Over nearly 2,000 Claude Code sessions and $20,000 in API costs, the agent team produced a 100,000-line compiler that can build Linux 6.9 on x86, ARM, and RISC-V.
+The compiler is an interesting artifact
+on its own, but I focus here on what I learned about designing harnesses for long-running autonomous agent teams: how to write tests that keep agents on track without human oversight, how to structure work so multiple agents can make progress in parallel, and where this approach hits its ceiling.
+Enabling long-running Claudes
+Existing agent scaffolds like Claude Code require an operator to be online and available to work jointly. If you ask for a solution to a long and complex problem, the model may solve part of it, but eventually it will stop and wait for continued input—a question, a status update, or a request for clarification.
+To elicit sustained, autonomous progress, I built a harness that sticks Claude in a simple loop (if you’ve seen Ralph-loop, this should look familiar). When it finishes one task, it immediately picks up the next.
+(Run this in a container, not your actual machine).
+#!/bin/bash
+
+while true; do
+    COMMIT=$(git rev-parse --short=6 HEAD)
+    LOGFILE="agent_logs/agent_${COMMIT}.log"
+
+    claude --dangerously-skip-permissions \
+           -p "$(cat AGENT_PROMPT.md)" \
+           --model claude-opus-X-Y &> "$LOGFILE"
+done
+Copy
+In the agent prompt, I tell Claude what problem to solve and ask it to approach the problem by breaking it into small pieces, tracking what it’s working on, figuring out what to work on next, and to effectively keep going until it’s perfect. (On this last point, Claude has no choice. The loop runs forever—although in one instance, I did see Claude
+pkill -9 bash
+on accident, thus killing itself and ending the loop. Whoops!).
+Running Claude in parallel
+Running multiple instances in parallel can address two weaknesses of a single-agent harness:
+One Claude Code session can only do one thing at a time. Especially as the scope of a project expands, debugging multiple issues in parallel is far more efficient.
+Running multiple Claude agents allows for specialization. While a few agents are tasked to solve the actual problem at hand, other specialized agents can be invoked to (for example) maintain documentation, keep an eye on code quality, or solve specialized sub-tasks.
+My implementation of parallel Claude is bare-bones. A new bare git repo is created, and for each agent, a Docker container is spun up with the repo mounted to
+/upstream
+. Each agent clones a local copy to
+/workspace
+, and when it's done, pushes from its own local container to upstream.
+To prevent two agents from trying to solve the same problem at the same time, the harness uses a simple synchronization algorithm:
+Claude takes a "lock" on a task by writing a text file to current_tasks/ (e.g., one agent might lock current_tasks/parse_if_statement.txt, while another locks current_tasks/codegen_function_definition.txt). If two agents try to claim the same task, git's synchronization forces the second agent to pick a different one.
+Claude works on the task, then pulls from upstream, merges changes from other agents, pushes its changes, and removes the lock. Merge conflicts are frequent, but Claude is smart enough to figure that out.
+The infinite agent-generation-loop spawns a new Claude Code session in a fresh container, and the cycle repeats.
+This is a very early research prototype. I haven’t yet implemented any other method for communication between agents, nor do I enforce any process for managing high-level goals. I don’t use an orchestration agent.
+Instead, I leave it up to each Claude agent to decide how to act. In most cases, Claude picks up the “next most obvious” problem. When stuck on a bug, Claude will often maintain a running doc of failed approaches and remaining tasks. In the
+git repository
+of the project, you can read through the history and watch it take out locks on various tasks.
+Lessons from programming with Claude agent teams
+The scaffolding runs Claude in a loop, but that loop is only useful if Claude can tell how to make progress. Most of my effort went into designing the environment around Claude—the tests, the environment, the feedback—so that it could orient itself without me. These are the approaches I’ve found most helpful when orchestrating multiple Claude instances.
+Write extremely high-quality tests
+Claude will work autonomously to solve whatever problem I give it. So it’s important that the task verifier is nearly perfect, otherwise Claude will solve the wrong problem. Improving the testing harness required finding high-quality compiler test suites, writing verifiers and build scripts for open-source software packages, and watching for mistakes Claude was making, then designing new tests as I identified those failure modes.
+For example, near the end of the project, Claude started to frequently break existing functionality each time it implemented a new feature. To address this, I built a continuous integration pipeline and implemented stricter enforcement that allowed Claude to better test its work so that new commits can’t break existing code.
+Put yourself in Claude’s shoes
+I had to constantly remind myself that I was writing this test harness for Claude and not for myself, which meant rethinking many of my assumptions about how tests should communicate results.
+For example, each agent is dropped into a fresh container with no context and will spend significant time orienting itself, especially on large projects. Before we even reach the tests, to help Claude help itself, I included instructions to maintain extensive READMEs and progress files that should be updated frequently with the current status.
+I also kept in mind the fact that language models have inherent limitations, which, in this case, needed to be designed around. These include:
+Context window pollution:
+The test harness should not print thousands of useless bytes. At most, it should print a few lines of output and log all important information to a file so Claude can find it when needed. Logfiles should be easy to process automatically: if there are errors, Claude should write ERROR and put the reason on the same line so grep will find it. It helps to pre-compute aggregate summary statistics so Claude doesn't have to recompute them.
+Time blindness:
+Claude can't tell time and, left alone, will happily spend hours running tests instead of making progress. The harness prints incremental progress infrequently (to avoid polluting context) and includes a default
+--fast
+option that runs a 1% or 10% random sample. This subsample is deterministic per-agent but random across VMs, so Claude still covers all files but each agent can perfectly identify regressions.
+Make parallelism easy
+When there are many distinct failing tests, parallelization is trivial: each agent picks a different failing test to work on. After the test suite reached a 99% pass rate, each agent worked on getting a different small open-source project (e.g., SQlite, Redis, libjpeg, MQuickJS, Lua) to compile.
+But when agents started to compile the Linux kernel, they got stuck. Unlike a test suite with hundreds of independent tests, compiling the Linux kernel is one giant task. Every agent would hit the same bug, fix that  bug, and then overwrite each other's changes. Having 16 agents running didn't help because each was stuck solving the same task.
+The fix was to use
+GCC
+as an online known-good compiler oracle to compare against. I wrote a new test harness that randomly compiled most of the kernel using GCC, and only the remaining files with Claude's C Compiler. If the kernel worked, then the problem wasn’t in Claude’s subset of the files. If it broke, then it could further refine by re-compiling some of these files with GCC. This let each agent work in parallel, fixing different bugs in different files, until Claude's compiler could eventually compile all files. (After this worked, it was still necessary to apply delta debugging techniques to find pairs of files that failed together but worked independently.)
+Multiple agent roles
+Parallelism also enables specialization. LLM-written code frequently re-implements existing functionality, so I tasked one agent with coalescing any duplicate code it found. I put another in charge of improving the performance of the compiler itself, and a third I made responsible for outputting efficient compiled code. I asked another agent to critique the design of the project from the perspective of a Rust developer, and make structural changes to the project to improve the overall code quality, and another to work on documentation.
+Stress testing the limits of agent teams
+This project was designed as a capability benchmark. I am interested in stress-testing the limits of what LLMs can just
+barely
+achieve today in order to help us prepare for what models will reliably achieve in the future.
+I’ve been using the C Compiler project as a benchmark across the entire Claude 4 model series. As I did with prior projects, I started by drafting what I wanted: a from-scratch optimizing compiler with no dependencies, GCC-compatible, able to compile the Linux kernel, and designed to support multiple backends. While I specified some aspects of the design (e.g., that it should have an SSA IR to enable multiple optimization passes) I did not go into any detail on how to do so.
+Previous Opus 4 models were barely capable of producing a functional compiler. Opus 4.5 was the first to cross a threshold that allowed it to produce a functional compiler which could pass large test suites, but it was still incapable of compiling any real large projects. My goal with Opus 4.6 was to again test the limits.
+Evaluation
+Over nearly 2,000 Claude Code sessions across two weeks, Opus 4.6 consumed 2 billion input tokens and generated 140 million output tokens, a total cost just under $20,000. Compared to even the most expensive Claude Max plans, this was an extremely expensive project. But that total is a fraction of what it would cost me to produce this myself—let alone an entire team.
+This was a clean-room implementation (Claude did not have internet access at any point during its development); it depends only on the Rust standard library. The 100,000-line compiler can build a bootable Linux 6.9 on x86, ARM, and RISC-V. It can also compile QEMU, FFmpeg, SQlite, postgres, redis, and has a 99% pass rate on most compiler test suites including the
+GCC torture test suite
+. It also passes the developer's ultimate litmus test: it can compile and run Doom.
+The compiler, however, is not without limitations. These include:
+It lacks the 16-bit x86 compiler that is necessary to boot Linux out of real mode. For this, it calls out to GCC (the x86_32 and x86_64 compilers are its own).
+It does not have its own assembler and linker; these are the very last bits that Claude started automating and are still somewhat buggy. The demo video was produced with a GCC assembler and linker.
+The compiler successfully builds many projects, but not all. It's not yet a drop-in replacement for a real compiler.
+The generated code is not very efficient. Even with all optimizations enabled, it outputs less efficient code than GCC with all optimizations
+disabled.
+The Rust code quality is reasonable, but is nowhere near the quality of what an expert Rust programmer might produce.
+The resulting compiler has nearly reached the limits of Opus’s abilities. I tried (hard!) to fix several of the above limitations but wasn’t fully successful. New features and bugfixes frequently broke existing functionality.
+As one particularly challenging example, Opus was unable to implement a 16-bit x86 code generator needed to boot into 16-bit real mode. While the compiler can output correct 16-bit x86 via the 66/67 opcode prefixes, the resulting compiled output is over 60kb, far exceeding the 32k code limit enforced by Linux. Instead, Claude simply cheats here and calls out to GCC for this phase (This is only the case for x86. For ARM or RISC-V, Claude’s compiler can compile completely by itself.)
 The
-sentiments
-from Cursor around “The developer’s job is becoming building the system that builds the software, the factory, not just the product” and “reviewing ideas is a lot more fun than reviewing code” (
-video
-) resonate with these points.
-There’s an onboarding parallel here
-One of the most striking patterns in how agents actually behave is how closely their work loop mirrors onboarding a new engineer.
-You hand them a spec. They break it into subtasks. They explore the codebase to understand the lay of the land. When they get stuck, they search commit history. They run git blame to figure out who last touched a subsystem. They escalate to the appropriate human for domain knowledge, via Slack or similar communication channels, and then continue. They iterate until the output meets the acceptance criteria.
-That loop is familiar because it is how people work. The implication is significant. Slack and email are becoming interfaces between humans and agents, not just between humans and humans. Git history is evolving into a knowledge graph that agents navigate to understand architectural decisions. Documentation is becoming training material for autonomous execution.
-If you want to think clearly about what investment to make in your codebase right now, ask yourself: could a new engineer, given only the documentation and commit history available, understand why the code is structured this way? If the answer is no, agents will struggle there too, and the leverage you could be getting will be limited.
-Your Spec is the Leverage
-Here is the insight that reshapes how you think about your own value as an engineer.
-If you can orchestrate twenty, thirty, fifty agents running in parallel, the difference between mediocre output and exceptional output comes down almost entirely to the quality of your specification. At that scale, vague thinking does not just slow you down. It multiplies. Ambiguous requirements propagate through dozens of parallel autonomous runs, each one going slightly wrong in a slightly different direction. Poor architectural decisions made upfront do not affect one implementation. They propagate across the entire fleet.
-You cannot write a spec that survives that environment unless you deeply understand the architecture, the integration boundaries, the edge cases, the failure modes, and the invariants that must never break.
-The spec is not a prompt anymore. The spec is the product thinking made explicit.
-This is why strong software engineers get more leverage from these tools than weak ones, not less. The mechanical work of typing code is being automated. The cognitive work of understanding systems is being amplified. Every hour you spend developing genuine architectural understanding and systems thinking now pays dividends across an entire fleet of autonomous workers rather than just your own output.
-What hasn’t really changed.
-It is worth being precise here, because the hype around AI coding can create the impression that traditional software engineering skills have been deprecated.
-They have not. Consider what agentic development still requires from you:
-Clear requirements.
-If you cannot articulate what success looks like in a way that can be evaluated, no amount of autonomous execution will produce it. Agents cannot clarify requirements they are never given.
-They will fill the gaps with assumptions, and those assumptions compound.
-Strong abstractions. An agent given a well-designed system with clear module boundaries, coherent interfaces, and good separation of concerns will produce better results than an agent given a tangled codebase where everything depends on everything else. Clean architecture does not become less valuable when agents are doing the implementation. It becomes more valuable, because agents amplify the properties of the system they are working in.
-Reliable tests. This deserves its own section.
-Careful tradeoffs. Agents optimize for the stated objective. They do not naturally balance competing concerns, anticipate second-order effects, or flag when a technically correct solution is the wrong product decision. That judgment still lives with you.
-Human oversight. Agents do impressive work. They also make confident mistakes. The output quality is high enough to get past casual review, which means the bar for your review skills actually increases, not decreases.
-Why tests matter more than ever
-Good tests and Test-driven development (TDD) were already good practice. In an agentic workflow, they becomes something close to mandatory.
-The idea is precise enough to be worth stating clearly. Red/green TDD means you write the tests before you write the implementation. You confirm the tests fail (red phase). Then you iterate on the implementation until the tests pass (green phase). That sequence is not optional ceremony. It is the mechanism that gives you confidence the implementation is actually doing what you think it is.
-With a single developer writing code, the downside of skipping test-first development is that you might write a test that passes regardless of whether your implementation is correct, or miss edge cases that get caught later as regressions. Those are real costs. They are manageable.
-With a fleet of agents generating code across dozens of parallel tasks, the costs compound severely.
-An agent optimizing for passing tests will find ways to pass them. If the tests were written after the implementation, they are likely testing what the implementation happens to do rather than what it should do.
-You now have a large surface area of code with a test suite that confirms the wrong thing. A comprehensive, test-first suite is by far the most effective lever you have for ensuring that autonomous output is actually correct and for protecting existing functionality as the codebase grows.
-“Red/green TDD” is a shorthand every good model understands. It captures a specific discipline: write tests first, confirm they fail before implementing, make them pass through correct implementation rather than by gaming the test. Telling an agent to use red/green TDD is one of the highest-leverage instructions you can give at the start of a task.
-The unsolved problem is veritication, not generation.
-Generation is not the bottleneck anymore. Verification is.
-Agents can produce impressive output. The challenge is knowing with confidence whether that output is correct. Several factors make this harder than it first appears.
-Tests that pass before a change does not mean they will catch regressions introduced by the change. Agents can write tests that are technically valid but miss the cases that matter. UI verification remains brittle, with visual and behavioral regressions slipping through because automated tools are not yet reliable enough to catch them all. Context window limitations mean that agents working on large codebases may miss important constraints or patterns that exist outside the window they are currently reasoning over. Flaky environments, which a single developer encounters as an annoying edge case and works around, become systemic blockers when you have forty agents hitting the same flaky test simultaneously. The factory stalls.
-The infrastructure that needs to exist to support this model at scale includes better automated regression detection, artifact-level validation that goes beyond diffing changed lines, reliable and fast environment provisioning, and guardrails that hold up under parallel workloads. These are active areas of investment. They are not solved.
-Until verification catches up with generation, human review is not optional overhead. It is the safety system. The appropriate response to impressive agent output is not to trust it because it looks good. It is to have the architectural understanding and testing discipline to evaluate it rigorously.
-The new shape of high-leverage engineering
-The engineers who will have the most impact in this era will not be distinguished by how fast they type or how well they remember syntax. They will be distinguished by a different set of capabilities.
-Systems thinking. The ability to hold a complex architecture in mind, understand how components interact, and anticipate how a change in one place affects behavior elsewhere. This is harder to develop than typing speed and far more valuable when you are managing a fleet of agents whose outputs you have to integrate.
-Problem decomposition. Knowing how to break a large, ambiguous goal into well-scoped subtasks that an agent can execute reliably. Tasks that are too large tend to go off-track. Tasks that are poorly scoped get interpreted incorrectly. The skill of decomposing problems well, and then verifying that the decomposition was right, is a genuine craft.
-Architectural judgment. Understanding why a system is designed the way it is, what properties it is optimizing for, and what tradeoffs were made. Agents can implement. They cannot judge whether what they are implementing is the right design.
-Specification clarity. The ability to write requirements that are unambiguous, complete with respect to the important edge cases, and structured in a way that makes evaluation straightforward. Vague specs produce vague results. Precise specs multiply into precise implementations.
-Output evaluation. The taste to recognize when something looks correct but is not, when an implementation solves the stated problem but creates a new one, when the architecture of the solution does not fit the architecture of the rest of the system. This judgment is not automatable.
-Orchestration skill. The practical ability to manage multiple parallel workstreams, give effective feedback on agent outputs, recognize when an agent needs to be redirected versus retasked, and maintain coherence across a fleet of autonomous workers.
-None of these are new skills, exactly. Good engineers have always needed them. What has changed is their relative importance. The mechanical parts of software development are being increasingly handled by machines. The cognitive parts are being amplified.
-What’s the bigger picture?
-New website creation is up 40% year over year. New iOS apps are up nearly 50%. GitHub code pushes jumped 35% in the US. All of these metrics were flat for years before late 2024. The
-graphs
-look like hockey sticks. People who have never written a line of code are building and launching software.
-Keep in mind, we can and should note that more quantity does not necessarily mean better quality. But the fact remains that the barrier to creating software has dropped dramatically, and that is a fundamental shift in the landscape of software engineering.
-The barrier to creating software has genuinely dropped. That is not hype. What it means for professional engineers is not that their skills are less valuable, but that the skills that matter have shifted up the stack, as they have in every previous transition.
-The developers who thrived after the move from assembly to C were not the ones who could write the most clever assembly. They were the ones who understood what the machine needed to do and could express that intent clearly in a higher-level language. The developers who thrived after the move to managed languages and frameworks were not the ones most resistant to garbage collection. They were the ones who saw the freed-up cognitive capacity as an opportunity to solve harder problems.
-The developers who will thrive in the agentic era are the ones who understand this as another step in the same arc and invest accordingly. Not in resisting the tools. Not in deferring to them uncritically. In developing the judgment, clarity, and systems thinking that make the tools maximally effective.
-That means writing better specs. Investing in test infrastructure. Developing genuine architectural understanding rather than surface familiarity. Building the taste to evaluate output rigorously. Practicing problem decomposition until it becomes second nature.
-The era of programming as primarily a keystroke activity is over. The era of programming as primarily a thinking and judgment activity has been accelerating for decades and just shifted into a higher gear.
-The factory model is not a metaphor about losing control of software. It is a metaphor about building leverage. The engineers who understand that will build the most interesting things of the next decade.
+source code for the compiler is available
+. Download it, read through the code, and try it on your favorite C projects. I’ve consistently found the best way to understand what language models can do is to push them to their limits, and then study where they start to break down. Over the coming days, I’ll continue having Claude push new changes if you want to follow along with Claude’s continued attempts at addressing these limitations.
+Looking forward
+Each generation of language models opens up new ways of working with them. Early models were useful for tab-completion in IDEs. Before long, models could complete a function body from its docstring. The launch of Claude Code brought agents into the mainstream and enabled developers to pair-program with Claude. But each of these products operates under the assumption that a user defines a task, an LLM runs for a few seconds or minutes and returns an answer, and then the user provides a follow-up.
+Agent teams show the possibility of implementing entire, complex projects autonomously. This allows us, as users of these tools, to become more ambitious with our goals.
+We are still early, and fully autonomous development comes with real risks. When a human sits with Claude during development, they can ensure consistent quality and catch errors in real time. For autonomous systems, it is easy to see tests pass and assume the job is done, when this is rarely the case. I used to work in penetration testing, exploiting vulnerabilities in products produced by large companies, and the thought of programmers deploying software they’ve never personally verified is a real concern.
+So, while this experiment excites me, it also leaves me feeling uneasy. Building this compiler has been some of the most fun I’ve had recently, but I did not expect this to be anywhere near possible so early in 2026. The rapid progress in both language models and the scaffolds we use to interact with them opens the door to writing an enormous amount of new code. I expect the positive applications to outweigh the negative, but we’re entering a new world which will require new strategies to navigate safely.
+Acknowledgements
+Special thanks to Josef Bacik, Edwin Chen, Bernardo Meurer Costa, Jake Eaton, Dan Kelley, Felix Klock, Jannet Park, Steve Weis, and many other people across Anthropic for their assistance and contributions.
+<Response [200]>
+URL: https://github.com/jrswab/axe
+
+CONTENT:
+ jrswab
+/
+axe
+Public
+Notifications
+You must be signed in to change notification settings
+Fork
+4
+Star
+275
+<Response [200]>
+URL: https://kubernetes.io/blog/2026/03/09/announcing-ai-gateway-wg/
+
+CONTENT:
+ Announcing the AI Gateway Working Group
+By
+Keith Mattix
+,
+Nir Rozenbaum
+,
+Morgan Foster
+,
+Flynn
+|
+Monday, March 09, 2026
+The community around Kubernetes includes a number of Special Interest Groups (SIGs) and Working Groups (WGs) facilitating discussions on important topics between interested contributors. Today, we're excited to announce the formation of the
+AI Gateway Working Group
+, a new initiative focused on developing standards and best practices for networking infrastructure that supports AI workloads in Kubernetes environments.
+What is an AI Gateway?
+In a Kubernetes context, an
+AI Gateway
+refers to network gateway infrastructure (including proxy servers, load-balancers, etc.) that generally implements the
+Gateway API
+specification with enhanced capabilities for AI workloads. Rather than defining a distinct product category, AI Gateways describe infrastructure designed to enforce policy on AI traffic, including:
+Token-based rate limiting for AI APIs.
+Fine-grained access controls for inference APIs.
+Payload inspection enabling intelligent routing, caching, and guardrails.
+Support for AI-specific protocols and routing patterns.
+Working group charter and mission
+The AI Gateway Working Group operates under a clear
+charter
+with the mission to develop proposals for Kubernetes Special Interest Groups (SIGs) and their sub-projects.
+Its primary goals include:
+Standards Development
+: Create declarative APIs, standards, and guidance for AI workload networking in Kubernetes.
+Community Collaboration
+: Foster discussions and build consensus around best practices for AI infrastructure.
+Extensible Architecture
+: Ensure composability, pluggability, and ordered processing for AI-specific gateway extensions.
+Standards-Based Approach
+: Build on established networking foundations, layering AI-specific capabilities on top of proven standards.
+Active proposals
+WG AI Gateway currently has several
+active proposals
+that address key challenges in
+AI workload networking:
+Payload Processing
+The
+payload processing proposal
+addresses the critical need for AI workloads to inspect and transform full HTTP request and response payloads.
+This enables:
+AI Inference Security
+Guard against malicious prompts and prompt injection attacks.
+Content filtering for AI responses.
+Signature-based detection and anomaly detection for AI traffic.
+AI Inference Optimization
+Semantic routing based on request content.
+Intelligent caching to reduce inference costs and improve response times.
+RAG (Retrieval-Augmented Generation) system integration for context enhancement.
+The proposal defines standards for declarative payload processor configuration, ordered processing pipelines, and configurable failure modes - all essential for production AI workload deployments.
+Egress gateways
+Modern AI applications increasingly depend on external inference services, whether for specialized models,
+failover scenarios, or cost optimization.
+The
+egress gateways proposal
+aims to define standards for securely routing traffic outside the cluster.
+Key features include:
+External AI Service Integration
+Secure access to cloud-based AI services (OpenAI, Vertex AI, Bedrock, etc.).
+Managed authentication and token injection for third-party AI APIs.
+Regional compliance and failover capabilities.
+Advanced Traffic Management
+Backend resource definitions for external FQDNs and services.
+TLS policy management and certificate authority control.
+Cross-cluster routing for centralized AI infrastructure.
+User Stories We're Addressing
+Platform operators providing managed access to external AI services.
+Developers requiring inference failover across multiple cloud providers.
+Compliance engineers enforcing regional restrictions on AI traffic.
+Organizations centralizing AI workloads on dedicated clusters.
+Upcoming events
+KubeCon + CloudNativeCon Europe 2026, Amsterdam
+AI Gateway working group members will be presenting at
+KubeCon + CloudNativeCon Europe
+in Amsterdam, discussing the problems at the intersection of AI and networking, including the working group's active proposals, as well as the intersection of AI gateways with Model Context Protocol (MCP) and agent networking patterns.
+This session will showcase how AI Gateway working group proposals enable the infrastructure needed for next-generation AI deployments and communication patterns.
+The session will also include the initial designs, early prototypes, and emerging directions shaping the WG’s roadmap.
+For more details see our session here:
+AI'm at the Gate! Introducing the AI Gateway Working Group in Kubernetes
+Get involved
+The AI Gateway Working Group represents the Kubernetes community's commitment to standardizing AI workload networking. As AI becomes increasingly integral to modern applications, we need robust, standardized infrastructure that can support the unique requirements of inference workloads while maintaining the security, observability, and reliability standards that Kubernetes users expect.
+Our proposals are currently in active development, with implementations beginning across various gateway projects. We're working closely with SIG Network on Gateway API enhancements and collaborating with the broader cloud-native community to ensure our standards meet real-world production needs.
+Whether you're a gateway implementer, platform operator, AI application developer, or simply interested in the intersection of Kubernetes and AI, we'd love your input. The working group follows an open contribution model - you can review our proposals, join our weekly meetings, or start discussions on our GitHub repository.
+To learn more:
+Visit the working group's umbrella
+GitHub repository
+.
+Read the working group's
+charter
+.
+Join the
+weekly meeting
+on Thursdays at 2PM EST.
+Connect with the working group on
+Slack (#wg-ai-gateway)
+(visit
+https://slack.k8s.io/
+for an invitation).
+Join the AI Gateway
+mailing list
+.
+The future of AI infrastructure in Kubernetes is being built today, join up and learn how you can contribute and help shape the future of AI-aware gateway capabilities in Kubernetes.
+←
+Previous
+Next
+→
+<Response [200]>
+URL: https://huggingface.co/blog/ibm-granite/granite-4-speech
+
+CONTENT:
+ Back to Articles
+Granite 4.0 1B Speech: Compact, Multilingual, and Built for the Edge
+Enterprise
+Article
+Published March 9, 2026
+Upvote
+8
++2
+George Saon
+gsaon
+Follow
+ibm-granite
+Madison Lee
+kristunlee
+Follow
+ibm-granite
+We’re excited to share
+Granite 4.0 1B Speech
+, the latest addition to
+IBM's Granite Speech collection
+. Designed for enterprise applications on resource-constrained devices, Granite 4.0 1B Speech is a compact speech-language model built for multilingual automatic speech recognition (ASR) and bidirectional speech translation (AST). With only half the parameters of its predecessor,
+granite-speech-3.3-2b
+, the model delivers higher English transcription accuracy, faster inference through speculative decoding, and expanded language support, now covering English, French, German, Spanish, Portuguese, and Japanese. Two new additions in this release are Japanese ASR support and keyword list biasing for improved recognition of names and acronyms, both of which are frequently requested capabilities from the community. Granite 4.0 1B Speech also recently ranked #1 on the
+OpenASR leaderboard
+, highlighting its strong performance among open speech recognition systems.
+Despite its small size, Granite 4.0 1B Speech achieves highly competitive results on standard English ASR benchmarks. Performance is measured using Word Error Rate (WER)—the percentage of words transcribed incorrectly—where lower scores indicate better accuracy. As shown in
+Chart 1
+, Granite 4.0 1B Speech delivers strong WER across multiple datasets while using far fewer parameters than many comparable models.
+Chart 1: granite-4.0-1B-speech delivers competitively low WER, thus strong ASR accuracy, across many benchmarks while being a small model.
+Like all Granite models, Granite 4.0 1B Speech is released under an Apache 2.0 license with native support in transformers and vLLM. We evaluated the model across a range of standard ASR and AST benchmarks — spanning English, multilingual, and translation tasks — and found it performs as well as or better than models well above its parameter count. Full evaluation results, architecture details, training data, and usage examples can be found on the
+model card
+. We recommend pairing it with
+Granite Guardian
+for production deployments requiring additional risk detection.
+Give it a try today and let us know what you think!
+Community
+Edit
+Preview
+Upload images, audio, and videos by dragging in the text input, pasting, or
+clicking here
+.
+Tap or paste here to upload images
+Comment
+·
+Sign up
+or
+log in
+to comment
+Upvote
+8
 <Response [200]>
