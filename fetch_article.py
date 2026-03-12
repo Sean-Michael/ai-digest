@@ -4,35 +4,45 @@ from requests import Response, RequestException
 from bs4 import BeautifulSoup
 
 def fetch_article(url : str) -> str | None:
-    print(f"URL: {url}\n")
+    print(f"Fetching URL: {url}\n")
 
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
+        content_type = response.headers.get('Content-Type', '')
     except RequestException as e:
         print(f"Caught Request Exception {e}")
         return None
     
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, 'html.parser')
-        noise_tags = ['nav', 'footer', 'header', 'aside', 'script', 'meta', 'style', 'form']
+    if response.status_code == 200 and "text/html" in content_type:
+        return parse_article(response)
+    else:
+        return None
+       
 
-        #print(f"BEFORE:\n {soup.get_text(separator='\n', strip=True)}")
+def parse_article(response: Response) -> str | None:
 
-        noise = soup.find_all(noise_tags)
-        if noise:
-            for n in noise:
-                n.decompose()
-        #print(f"AFTER:\n {soup.get_text(separator='\n', strip=True)}")
+    soup = BeautifulSoup(response.content, 'html.parser')
+    noise_tags = ['nav', 'footer', 'header', 'aside', 'script', 'meta', 'style', 'form']
+    noise_selectors = ['.comments', '.sidebar', '[role="navigation"]']
 
-        content = soup.find('article') or soup.find('main') or soup.find('body')
-        if content:
-            print(f"CONTENT:\n {content.get_text(separator='\n', strip=True)}")
 
-        if content:
-            return content.get_text(separator='\n', strip=True)
-        else:
-            return None
+    #print(f"BEFORE:\n {soup.get_text(separator='\n', strip=True)}")
+
+    noise = soup.find_all(noise_tags)
+    if noise:
+        for n in noise:
+            n.decompose()
+    #print(f"AFTER:\n {soup.get_text(separator='\n', strip=True)}")
+
+    content = soup.find('article') or soup.find('main') or soup.find('body')
+    if content:
+        print(f"CONTENT:\n {content.get_text(separator='\n', strip=True)}")
+
+    if content:
+        return content.get_text(separator='\n', strip=True)
+    else:
+        return None
 
 
 def main():
