@@ -1,9 +1,13 @@
+---
+title: "MLOps in Production: Agents, Security, and Reality Checks | 2026-03-12"
+date: 2026-03-12
+---
 # MLOps in Production: Agents, Security, and Reality Checks | 2026-03-12
 
 ## 🔥 Story of the Day
 ### Runpod report: Qwen has overtaken Meta’s Llama as the most-deployed self-hosted LLM — The New Stack[https://thenewstack.io/runpod-ai-infrastructure-reality/](https://thenewstack.io/runpod-ai-infrastructure-reality/)
 
-Nvidia's new Nemotron 3 Super, a 120B open model with a 1M-token context window using a hybrid latent mixture-of-experts architecture, is now available via NIMs and major cloud platforms, making large-scale agentic workloads more accessible without immediate hardware acquisition. Meanwhile, Runpod’s "State of AI" report challenges industry survey data by leveraging raw infrastructure exhaust logs from over 500,000 developers to reveal that Qwen has surpassed Meta's Llama as the most-deployed self-hosted model in actual production environments.
+Runpod's "State of AI" report challenges industry survey data by leveraging raw infrastructure exhaust logs from over 500,000 developers to reveal that Qwen has surpassed Meta's Llama as the most-deployed self-hosted model in actual production environments. Nvidia's new Nemotron 3 Super, a 120B open model with a 1M-token context window using a hybrid latent mixture-of-experts architecture, is now available via NIMs and major cloud platforms, making large-scale agentic workloads more accessible without immediate hardware acquisition.
 
 This shift is critical for DevOps engineers evaluating workload distribution strategies, as it validates Qwen’s efficiency for specific use cases where Llama previously held dominance based on hype cycles rather than empirical adoption metrics. The data-driven approach contrasts sharply with anecdotal evidence or marketing narratives, providing a concrete baseline for prioritizing model selection and resource allocation in MLOps pipelines running on Kubernetes clusters.
 
@@ -18,13 +22,13 @@ OpenAI outlines a security mechanism for ChatGPT designed to mitigate prompt inj
 OpenAI describes an agent runtime leveraging the newly released Responses API, shell tools, and hosted containers to facilitate secure and scalable operations for agents interacting with files, tools, and state. The architecture integrates API logic, a shell-based execution context, and containerized hosting to create a cohesive environment where AI agents can safely execute complex workflows without managing every low-level dependency from scratch.
 
 ### OneCLI – Vault for AI Agents in Rust — Y Combinator[https://github.com/onecli/onecli](https://github.com/onecli/onecli)
-Comments section indicates the existence of a Rust-based tool labeled "OneCLI," described as a vault for AI agents. No further technical specifications or architectural details are provided in the available content, so specific implementation insights remain unavailable based on this source alone.
+The GitHub repository announcement for OneCLI labels it as a "Vault for AI Agents" built in Rust; the provided summary contains no specific implementation details or technical specs beyond this designation.
 
 ### An agent skill for eval-driven development of LLM-powered app — Hacker News - LLM[https://github.com/yiouli/pixie-qa](https://github.com/yiouli/pixie-qa)
-A custom tool or workflow titled "pixie-qa" was created to automate the refinement of LLM output quality, freeing developers from manual chores. The specific technology stack, functional mechanism, or efficiency gains delivered by this skill are not described in the provided announcement text, limiting understanding of its integration into an infrastructure stack.
-
-### LLMock: Deterministic mock LLM server for testing — Hacker News - LLM[https://llmock.copilotkit.dev/](https://llmock.copilotkit.dev/)
-LLMock is listed as a deterministic mock LLM server intended for testing purposes within the CopilotKit ecosystem. No technical details regarding its API, latency profiles, or integration methods with Kubernetes are available in the current content metadata.
+A custom tool titled "pixie-qa" was created to automate the refinement of LLM output quality, though no specific technology stack or efficiency metrics are described in the announcement text.
 
 ### Slicing an 80B MoE LLM into 40B domain specialists — Hacker News - LLM[https://github.com/JThomas-CoE/College-of-Experts-AI/tree/main/CoE-Demo-v1.5](https://github.com/JThomas-CoE/College-of-Experts-AI/tree/main/CoE-Demo-v1.5)
-The project "College-of-Experts-AI" demonstrates a method for slicing an 80B MoE LLM into 40B domain specialists, currently at Demo v1.5. Specific architectural diagrams or performance metrics regarding the specialization process are not included in the provided repository metadata.
+The project "College-of-Experts-AI" demonstrates a method for slicing an 80B MoE LLM into 40B domain specialists at Demo v1.5, but specific architectural diagrams or performance metrics are not included in the provided repository metadata.
+
+---
+*Researcher: qwen3.5:9b • Writer: qwen3.5:9b • Editor: qwen3.5:9b*

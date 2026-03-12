@@ -1,5 +1,1 @@
-- Replace "in this article" or similar filler phrases if present (none detected, but verify future drafts).
-- Ensure all markdown links strictly follow `[text](url)` format without trailing punctuation outside the closing parenthesis.
-- Confirm the Story of the Day provides deeper strategic context compared to the concise nature of Quick Hits.
-- Verify that no story appears invented; ensure every headline corresponds to a real, published source on the provided date (2026-03-12).
-- Check if the digest is engaging enough for a morning coffee read by adding brief personal relevance or impact statements.
+OneCLI and pixie-qa entries: The source text for these Quick Hits explicitly states that specific technical details, functional mechanisms, or efficiency gains are "not described" in the announcement text. You cannot write a news digest item stating "No further technical specifications... are provided" if your draft currently includes those exact sentences explaining the lack of data. These entries look like placeholders or invented summaries claiming a source exists but noting it lacks content. Remove these lines immediately as they violate the requirement that stories must be substantively sourced and not appear invented or meta-commenting on missing source info.
