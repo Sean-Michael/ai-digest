@@ -39,6 +39,7 @@ import requests
 from requests import Response, RequestException
 from bs4 import BeautifulSoup
 import concurrent.futures
+from pythonjsonlogger.json import JsonFormatter
 
 
 # Boolean to control wether or not the generated digest is 'published' by uploading to s3
@@ -50,7 +51,7 @@ BASE_PATH = Path(__file__).parent
 DRAFT_DIR = BASE_PATH / 'drafts' / DATE_STR
 DIGEST_DIR = BASE_PATH / 'digests'
 LOG_DIR = BASE_PATH / 'logs'
-LOG_FILE = LOG_DIR / DATE_STR / f"main-{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+LOG_FILE = LOG_DIR / DATE_STR / f"main-{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json"
 
 RESEARCHER_MODEL = "qwen3.5:9b"
 WRITER_MODEL = "qwen3.5:9b"
@@ -69,18 +70,23 @@ S3_CONTENT_BUCKET = os.getenv("S3_CONTENT_BUCKET", "smr-webdev-content")
 AWS_REGION = os.getenv("AWS_REGION", "us-west-2")
 
 
-FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
+console_format = '%(asctime)s - %(levelname)s - %(message)s'
+json_formatter = JsonFormatter(
+    '%(asctime)s %(levelname)s %(message)s'
+)
+
 LOG_LEVEL = logging.INFO
 
 os.makedirs(LOG_DIR / DATE_STR, exist_ok=True)
 file_handler = logging.FileHandler(LOG_FILE, mode='a')
 file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(json_formatter)
 
 console_handler = logging.StreamHandler()
 console_handler.setLevel(LOG_LEVEL)
+console_handler.setFormatter(logging.Formatter(console_format))
 
 logging.basicConfig(
-    format=FORMAT,
     level= logging.DEBUG,
     handlers = [file_handler, console_handler]
 )
