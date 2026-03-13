@@ -183,20 +183,20 @@ def ingest_rss_feeds() -> dict:
         results[name] = []
         feed = feedparser.parse(url)
         for entry in feed.entries:
-            date = entry.get('published_parsed') or entry.get('updated_parsed')
+            date = entry.get('published_parsed', None) or entry.get('updated_parsed', None)
             if date:
-                timestamp = mktime(date)
+                timestamp = mktime(date)    # type: ignore[arg-type]
                 datetime_obj = datetime.fromtimestamp(timestamp, UTC)
                 if  datetime_obj > current_utc_time - timedelta(hours=TIMEFRAME_HOURS):
                     results[name].append(entry)
         if results.get(name, []):
-            logging.debug(f"Got {len(results.get(name))} recent entries for {name}") 
+            logging.debug(f"Got {len(results.get(name, ''))} recent entries for {name}") 
     end = perf_counter()
     logging.info(f"RSS parser finished in {end - start}s")   
     return results
 
 
-def build_researcher_prompt(interests: list[str], articles: list[dict[str]]) -> str:
+def build_researcher_prompt(interests: list[str], articles: str) -> str:
     prompt = f"""You are a researcher of news stories for an AI / ML Ops professional interested in the following topics: {interests}. 
     Specifically focus on new technology or product releases, workflows, techniques, or otherwise 'technical' content rather than social or political.
     Given a list of articles in the following format:
@@ -247,7 +247,7 @@ def summarize_article(article: dict):
     return summarized
 
 
-def researcher(raw_articles: list[dict]) -> list[dict] | None:
+def researcher(raw_articles: dict[str, list]) -> list[dict] | None:
     """Refine article results into best candidates"""
     logging.info(f"Ingested {sum(len(v) for v in raw_articles.values())} total articles from {len(raw_articles)} feeds")
     trimmed = [
@@ -296,7 +296,7 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
         return None
 
     try: 
-        curated_links = list(set(json.loads(response.message.content)))
+        curated_links = list(set(json.loads(response.message.content or '[]')))
         logging.info(f"Researcher selected {len(curated_links)} unique links")
         logging.debug(f"researcher links: {curated_links}")
         curated_articles = [a for a in trimmed if a.get('link') in curated_links]
@@ -313,7 +313,7 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
         return None
 
 
-def writer(articles: str, previous_draft:str | None, feedback:str | None) -> str | None:
+def writer(articles: list[dict[str, str]], previous_draft:str | None, feedback:str | None) -> str | None:
     """Take curated articles and generate a Newsletter.MD"""
     logging.info(f"Writer recieved {len(articles)} articles.")
     newsletter = ""
