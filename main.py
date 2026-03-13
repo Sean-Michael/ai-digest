@@ -231,7 +231,7 @@ def summarize_article(article: dict):
         and why it matters to someone building ML infrastructure.
 
         ARTICLE: 
-        {re.sub(r'<[^>]+>', '', article.get('content'))}
+        {re.sub(r'<[^>]+>', '', article.get('content', 'NO CONTENT'))}
     """
     response = chat_with_ollama(RESEARCHER_MODEL, system_prompt, user_prompt, think=False)
 
@@ -262,18 +262,27 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
         for entry in entries 
     ]
 
-    for a in trimmed:
-        content =  a.get('content', '')
-        
-        if len(content) < 200 or 'NO CONTENT' in content:
-            logging.info(f"RSS got no content for '{a.get('title', 'unknown')}', fetching article")
-            
-            a['content'] = fetch_article(a.get('link', '')) or 'NO CONTENT'
-            logging.debug(f"Fetched content length: {len(a['content'])}")
-            
-            if content == 'NO CONTENT':
-                logging.info(f"Could not fetch article content for '{a.get('title', 'unkown')}")
-            
+    thin_articles = [
+        a for a in trimmed 
+        if (len(a.get('content', '')) < 200 
+            or 'NO CONTENT' in a.get('content', ''))
+        ]
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_article = {executor.submit(fetch_article, a.get('link', '')): a for a in thin_articles}
+
+        for future in concurrent.futures.as_completed(future_to_article):
+            try:
+                a = future_to_article[future]
+                logging.info(f"RSS got no content for '{a.get('title', 'unknown')}', fetching article")
+                a['content'] = future.result() or 'NO CONTENT'
+                logging.debug(f"Fetched content length: {len(a['content'])}")
+                if a['content'] == 'NO CONTENT':
+                    logging.info(f"Could not fetch article content for '{a.get('title', 'unknown')}")
+            except RequestException as e:
+                logging.error(f"Exception caught in task future: {e}")
+            except Exception as e:
+                logging.error(f"Exception caught in task future: {e}")
 
     trimmed_for_curation = [{k: a[k] for k in ('source','title','summary','link')} for a in trimmed]
     researcher_prompt = build_researcher_prompt(INTERESTS, json.dumps(trimmed_for_curation))
