@@ -19,7 +19,8 @@ TODO:
 - [ ] Logging to file and formatted
 - [ ] Pull in system logs with some orchestrator script or something like journalctl ollama and nvidia
 - [ ] Change environment vars to click CLI options
-- [ ] Add HTTP page request and parse tool call
+- [x] Add HTTP page request and parse function
+- [ ] Add tool calling to writer/editor
 """
 
 import feedparser
@@ -34,10 +35,14 @@ import boto3
 from pathlib import Path
 from botocore.exceptions import ClientError
 import os
+import requests
+from requests import Response, RequestException
+from bs4 import BeautifulSoup
+import concurrent.futures
 
 
 # Boolean to control wether or not the generated digest is 'published' by uploading to s3
-PUBLISH = True
+PUBLISH = False
 
 DATE_STR = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
 
@@ -71,7 +76,72 @@ current_utc_time = datetime.now(UTC)
 logging.info(f"Current UTC time {current_utc_time}")
 
 
-def chat_with_ollama(model_name: str, system_prompt:str, user_prompt:str, think:bool = False, options=None) -> ChatResponse:
+def fetch_article(url : str) -> str | None:
+    """Requests a page from URL via HTTP"""
+
+    logging.info(f"Fetching URL: {url}\n")
+
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        content_type = response.headers.get('Content-Type', '')
+    except RequestException as e:
+        logging.error(f"Caught Request Exception {e}")
+        return None
+    
+    if response.status_code == 200 and "text/html" in content_type:
+        return parse_article(response)
+    else:
+        return None
+     
+
+def parse_article(response: Response) -> str | None:
+    """Parses page to extract text content."""
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    noise_tags = [
+        'nav', 'footer', 'header', 'aside',
+        'script', 'meta', 'style', 'form',
+        'svg', 'noscript', 'iframe', 'button',
+    ]
+
+    noise_selectors = [
+    '[role="navigation"]',
+    '[role="complementary"]',
+    '[role="banner"]',
+    '.comments', '.comment-section', '#comments',
+    '.sidebar', '#sidebar',
+    '.social-share', '.share-buttons', '.sharing',
+    '.related-posts', '.recommended', '.read-next',
+    '.newsletter-signup', '.subscribe',
+    '.cookie-banner', '.cookie-consent',
+    '.author-bio', '.author-card',
+    '.table-of-contents', '.toc',
+    '.breadcrumb', '.breadcrumbs',
+    '.pagination',
+    '.ad', '.advertisement', '.sponsored',
+    ]
+
+    for selector in noise_selectors:
+        for el in soup.select(selector):
+            el.decompose()
+
+    for tag_noise in soup.find_all(noise_tags):
+        tag_noise.decompose()
+
+    content = soup.find('article') or soup.find('main') or soup.find('body')
+
+    if content:
+        text = content.get_text(separator='\n', strip=True)
+        if len(text) < 200:
+            return None
+        logging.info(f"Extracted {len(text)} chars from content.")
+        return text
+
+
+def chat_with_ollama(
+        model_name: str, system_prompt:str, user_prompt:str,
+          think:bool = False, options=None, tools=None) -> ChatResponse:
     """Sends a chat to a model with a prompt"""
     message = [
         {
@@ -89,7 +159,8 @@ def chat_with_ollama(model_name: str, system_prompt:str, user_prompt:str, think:
         model=model_name, 
         messages=message, 
         think=think, 
-        options=options or {"num_ctx": NUM_CTX}
+        options=options or {"num_ctx": NUM_CTX},
+        tools=tools
         )
     
     finish = perf_counter()
@@ -97,10 +168,6 @@ def chat_with_ollama(model_name: str, system_prompt:str, user_prompt:str, think:
     logging.info(f"Chat finished in {finish - start}s")
     return response
 
-
-def fetch_article():
-    """Fetches an article by URL over HTTP and parses HTML output."""
-    pass
 
 def ingest_rss_feeds() -> dict:
     """Parse RSS feeds and return dictionary of information"""
@@ -195,10 +262,24 @@ def researcher(raw_articles: list[dict]) -> list[dict] | None:
         for entry in entries 
     ]
 
+    for a in trimmed:
+        content =  a.get('content', '')
+        
+        if len(content) < 200 or 'NO CONTENT' in content:
+            logging.info(f"RSS got no content for '{a.get('title', 'unknown')}', fetching article")
+            
+            a['content'] = fetch_article(a.get('link', '')) or 'NO CONTENT'
+            logging.debug(f"Fetched content length: {len(a['content'])}")
+            
+            if content == 'NO CONTENT':
+                logging.info(f"Could not fetch article content for '{a.get('title', 'unkown')}")
+            
+
     trimmed_for_curation = [{k: a[k] for k in ('source','title','summary','link')} for a in trimmed]
     researcher_prompt = build_researcher_prompt(INTERESTS, json.dumps(trimmed_for_curation))
     system_prompt = "You are a precise news researcher. Follow instructions exactly. Return only what is asked."
     response = ""
+
     try:
         response = chat_with_ollama(RESEARCHER_MODEL, system_prompt, researcher_prompt, think=False)
     except Exception as e:
