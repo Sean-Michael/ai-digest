@@ -1,3 +1,7 @@
+---
+title: "Infrastructure Reality Checks: From Agent Orchestration to Control Plane Debugging | 2026-03-12"
+date: 2026-03-12
+---
 # Infrastructure Reality Checks: From Agent Orchestration to Control Plane Debugging | 2026-03-12
 
 ## 🔥 Story of the Day
@@ -22,3 +26,6 @@ Nvidia has launched Nemotron 3 Super, a 120-billion-parameter open-weight model 
 
 ### [Making etcd incidents easier to debug in production Kubernetes](https://www.cncf.io/blog/2026/03/12/making-etcd-incidents-easier-to-debug-in-production-kubernetes/) — CNCF Blog
 The CNCF introduces `etcd-diagnosis`, a tool designed to bridge the gap between vague control plane symptoms and actionable signals by automatically generating comprehensive diagnostic reports. Instead of relying on manual log collection or tribal knowledge, the tool aggregates specific metrics—such as WAL fsync behavior, network round-trip times between members, and disk I/O latency—into a single `etcd-diagnosis report` command output. This capability is critical for the stability of control planes hosting self-hosted ML workloads; the tool reduces incident resolution time by enabling platform teams to distinguish between transient glitches and genuine failures requiring intervention, particularly in complex environments like vSphere Kubernetes Service.
+
+---
+*Researcher: qwen3.5:9b • Writer: qwen3.5:9b • Editor: qwen3.5:9b*

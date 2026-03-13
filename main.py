@@ -81,6 +81,7 @@ console_handler.setLevel(LOG_LEVEL)
 
 logging.basicConfig(
     format=FORMAT,
+    level= logging.DEBUG,
     handlers = [file_handler, console_handler]
 )
 
@@ -177,7 +178,7 @@ def chat_with_ollama(
     
     finish = perf_counter()
     logging.debug(f"Response from Ollama: {response}")
-    logging.info(f"Chat finished in {finish - start}s")
+    logging.debug(f"Chat finished in {finish - start}s")
     return response
 
 
@@ -204,7 +205,7 @@ def ingest_rss_feeds() -> dict:
         if results.get(name, []):
             logging.debug(f"Got {len(results.get(name, ''))} recent entries for {name}") 
     end = perf_counter()
-    logging.info(f"RSS parser finished in {end - start}s")   
+    logging.debug(f"RSS parser finished in {end - start}s")   
     return results
 
 
@@ -378,7 +379,7 @@ def writer(articles: list[dict[str, str]], previous_draft:str | None, feedback:s
 
     response = chat_with_ollama(WRITER_MODEL, system_prompt, user_prompt, think=False)
     newsletter = response.message.content
-    logging.info(f"Newsletter draft: {newsletter}")
+    logging.info(f"Writer generated draft.")
     return newsletter
 
 
@@ -411,8 +412,7 @@ def editor(draft: str) -> str | None:
 
     response = chat_with_ollama(EDITOR_MODEL, system_prompt, user_prompt, think=False)
     feedback = response.message.content
-    logging.info(f"Editor feedback: {feedback}")
-
+    logging.info("Editor generated feedback.")
     return feedback
 
 
@@ -496,7 +496,7 @@ date: {DATE_STR}
 def main():
     """Main execution loop"""
 
-    for d in [DRAFT_DIR, DIGEST_DIR, LOG_DIR]:
+    for d in [DRAFT_DIR, DIGEST_DIR]:
         os.makedirs(d, exist_ok=True)
 
     start_main = perf_counter()
@@ -519,7 +519,7 @@ def main():
         if not draft:
             revisions += 1
             continue
-
+        
         draft_filename = DRAFT_DIR / f"draft-{revisions}"
         with open(draft_filename, "w") as draft_file:
             draft_file.write(draft)
