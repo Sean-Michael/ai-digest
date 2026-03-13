@@ -4,6 +4,8 @@ from requests import Response, RequestException
 from bs4 import BeautifulSoup
 
 def fetch_article(url : str) -> str | None:
+    """Requests a page from URL via HTTP"""
+    
     print(f"Fetching URL: {url}\n")
 
     try:
@@ -21,23 +23,40 @@ def fetch_article(url : str) -> str | None:
        
 
 def parse_article(response: Response) -> str | None:
+    """Parses page to extract text content."""
 
     soup = BeautifulSoup(response.content, 'html.parser')
-    noise_tags = ['nav', 'footer', 'header', 'aside', 'script', 'meta', 'style', 'form']
-    noise_selectors = ['.comments', '.sidebar', '[role="navigation"]']
+    noise_tags = [
+        'nav', 'footer', 'header', 'aside',
+        'script', 'meta', 'style', 'form',
+        'svg', 'noscript', 'iframe', 'button',
+    ]
 
+    noise_selectors = [
+    '[role="navigation"]',
+    '[role="complementary"]',
+    '[role="banner"]',
+    '.comments', '.comment-section', '#comments',
+    '.sidebar', '#sidebar',
+    '.social-share', '.share-buttons', '.sharing',
+    '.related-posts', '.recommended', '.read-next',
+    '.newsletter-signup', '.subscribe',
+    '.cookie-banner', '.cookie-consent',
+    '.author-bio', '.author-card',
+    '.table-of-contents', '.toc',
+    '.breadcrumb', '.breadcrumbs',
+    '.pagination',
+    '.ad', '.advertisement', '.sponsored',
+    ]
 
-    #print(f"BEFORE:\n {soup.get_text(separator='\n', strip=True)}")
+    for selector in noise_selectors:
+        for el in soup.select(selector):
+            el.decompose()
 
-    noise = soup.find_all(noise_tags)
-    if noise:
-        for n in noise:
-            n.decompose()
-    #print(f"AFTER:\n {soup.get_text(separator='\n', strip=True)}")
+    for tag_noise in soup.find_all(noise_tags):
+        tag_noise.decompose()
 
     content = soup.find('article') or soup.find('main') or soup.find('body')
-    if content:
-        print(f"CONTENT:\n {content.get_text(separator='\n', strip=True)}")
 
     if content:
         return content.get_text(separator='\n', strip=True)
