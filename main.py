@@ -11,13 +11,12 @@ TODO:
 - [x] Add timings to functions 
 - [ ] Add traces to all calls
 - [x] Trim summaries to help token limits/truncation
-- [ ] Speedup ingest_rss_feeds
-- [ ] Experiment tracking for different models/prompts
+- [ ] Speedup ingest_rss_feeds with concurrency
+- [ ] Experiment tracking for different models/prompts with MLFlow
 - [ ] Map reduce for articles researcher needs to summarize them for the writer
 - [ ] Refactor ingest_rss_feeds to return a list[dict] directly instead of dict[str, list]
 - [ ] DRY
 - [x] Logging to file
-- [ ] Pull in system logs with some orchestrator script or something like journalctl ollama and nvidia
 - [ ] Change environment vars to click CLI options
 - [x] Add HTTP page request and parse function
 - [ ] Add tool calling to writer/editor
@@ -43,7 +42,7 @@ from pythonjsonlogger.json import JsonFormatter
 
 
 # Boolean to control wether or not the generated digest is 'published' by uploading to s3
-PUBLISH = False
+PUBLISH = True
 
 DATE_STR = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
 
