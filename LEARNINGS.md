@@ -94,3 +94,7 @@ I updated the prompts a bit so the Editor is better at just responding LGTM and 
 I wonder how much the editor is actually helping here. After setting up file writes for every edit and draft it's funny to see the editor accuse the writer of hallucinating content because it hallucinated that the content is fake, even alluding to how it checked and verified when I have given it no ability to do so just yet ... 
 
 Obiously that's pretty high on my list for the editor to be able to use an MCP tool too pull down an article it thinks is suspicious. It also has a hard time understanding what the date is even though I've presented it in the prompt. 
+
+Well adding that simple bit of code to fetch hmtl and decomp and parse it with beautifulsoup really worked wonders on some of those feeds. In particular it made HuggingFace blog actually workable because before I was getting barely any content and now it's the featured story of the latest edition! HA.
+
+It's still mucking up the hyperlinks, even worse than before I added some more nudging to the prompt. I think I confused the poor guy. 
