@@ -504,13 +504,20 @@ def main():
     while not ready_to_publish and revisions < MAX_REVISIONS:
         start_revision = perf_counter()
         draft = writer(curated_articles, draft, feedback)
+        if not draft:
+            revisions += 1
+            continue
+
         draft_filename = DRAFT_DIR / f"draft-{revisions}"
-        
         with open(draft_filename, "w") as draft_file:
             draft_file.write(draft)
-        feedback = editor(draft)
-        edit_filename = DRAFT_DIR / f"edits-{revisions}"
         
+        feedback = editor(draft)
+        if not feedback:
+            revisions += 1
+            continue
+    
+        edit_filename = DRAFT_DIR / f"edits-{revisions}"
         with open(edit_filename, "w") as edit_file:
             edit_file.write(feedback)
         
