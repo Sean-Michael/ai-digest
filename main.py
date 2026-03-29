@@ -40,6 +40,7 @@ from bs4 import BeautifulSoup
 import concurrent.futures
 from pythonjsonlogger.json import JsonFormatter
 
+from prompts import RESEARCHER_SYSTEM_PROMPT, RESEARCHER_USER_PROMPT
 
 # Boolean to control wether or not the generated digest is 'published' by uploading to s3
 PUBLISH = True
@@ -303,12 +304,11 @@ def researcher(raw_articles: dict[str, list]) -> list[dict] | None:
                 logging.error(f"Exception caught in task future: {e}")
 
     trimmed_for_curation = [{k: a[k] for k in ('source','title','summary','link')} for a in trimmed]
-    researcher_prompt = build_researcher_prompt(INTERESTS, json.dumps(trimmed_for_curation))
-    system_prompt = "You are a precise news researcher. Follow instructions exactly. Return only what is asked."
+    researcher_prompt = RESEARCHER_USER_PROMPT.render(interests=INTERESTS, articles=json.dumps(trimmed_for_curation))
     response = ""
 
     try:
-        response = chat_with_ollama(RESEARCHER_MODEL, system_prompt, researcher_prompt, think=False)
+        response = chat_with_ollama(RESEARCHER_MODEL, RESEARCHER_SYSTEM_PROMPT.prompt, researcher_prompt, think=False)
     except Exception as e:
         logging.error(f"Caught Exception: {e}")
         return None
