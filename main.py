@@ -2,26 +2,20 @@
 File: main.py
 Author: Sean-Michael Riesterer
 Description: Agentic AI workflow for gathering RSS feed based content into a newsfeed.
-Version: v1.0.0
+Version: v1.0.1
 """
 
-import feedparser
 import logging
-from datetime import datetime, timedelta, UTC
-from time import mktime, perf_counter
+from datetime import datetime, UTC
+from time import perf_counter
 import json
 import re
 from ollama import chat, ChatResponse
-from zoneinfo import ZoneInfo
 import boto3
-from pathlib import Path
 from botocore.exceptions import ClientError
 import os
-import requests
-from requests import Response, RequestException
-from bs4 import BeautifulSoup
+from requests import RequestException
 import concurrent.futures
-from pythonjsonlogger.json import JsonFormatter
 
 from prompts import (
     RESEARCHER_SYSTEM_PROMPT,
@@ -34,66 +28,31 @@ from prompts import (
     EDITOR_USER_PROMPT,
 )
 
-# Boolean to control wether or not the generated digest is 'published' by uploading to s3
-PUBLISH = False
-
-DATE_STR = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
-
-BASE_PATH = Path(__file__).parent
-DRAFT_DIR = BASE_PATH / "drafts" / DATE_STR
-DIGEST_DIR = BASE_PATH / "digests"
-LOG_DIR = BASE_PATH / "logs"
-LOG_FILE = (
-    LOG_DIR / DATE_STR / f"main-{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json"
+from article_processor import (
+    fetch_article,
+    ingest_rss_feeds,
 )
 
-RESEARCHER_MODEL = "gpt-oss:20b"
-WRITER_MODEL = "gpt-oss:20b"
-EDITOR_MODEL = "gpt-oss:20b"
-NUM_CTX = 32768
-MAX_REVISIONS = 3
-TIMEFRAME_HOURS = 24
-INTERESTS = [
-    "AI",
-    "ML",
-    "MLOps",
-    "LLMOps",
-    "Platform Engineering",
-    "AI Engineering",
-    "DevOps",
-    "Kubernetes",
-    "NVIDIA",
-    "LangChain",
-    "Agents",
-    "Anthropic",
-    "Claude Code",
-    "Codex",
-    "AMD",
-    "Intel",
-    "Hugging Face",
-    "PyTorch",
-    "Ollama",
-    "vLLM",
-    "MCP",
-    "RAG",
-    "vector databases",
-    "OpenAI",
-    "Gemini",
-    "Mistral",
-    "Qwen",
-    "Terraform",
-    "ArgoCD",
-    "GitOps",
-]
+from config import (
+    PUBLISH,
+    DATE_STR,
+    DIGEST_DIR,
+    DRAFT_DIR,
+    LOG_DIR,
+    LOG_FILE,
+    RESEARCHER_MODEL,
+    WRITER_MODEL,
+    EDITOR_MODEL,
+    NUM_CTX,
+    MAX_REVISIONS,
+    INTERESTS,
+    S3_CONTENT_BUCKET,
+    AWS_REGION,
+    console_format,
+    json_formatter,
+    LOG_LEVEL,
+)
 
-S3_CONTENT_BUCKET = os.getenv("S3_CONTENT_BUCKET", "smr-webdev-content")
-AWS_REGION = os.getenv("AWS_REGION", "us-west-2")
-
-
-console_format = "%(asctime)s - %(levelname)s - %(message)s"
-json_formatter = JsonFormatter("%(asctime)s %(levelname)s %(message)s")
-
-LOG_LEVEL = logging.INFO
 
 os.makedirs(LOG_DIR / DATE_STR, exist_ok=True)
 file_handler = logging.FileHandler(LOG_FILE, mode="a")
@@ -108,92 +67,6 @@ logging.basicConfig(level=logging.DEBUG, handlers=[file_handler, console_handler
 
 current_utc_time = datetime.now(UTC)
 logging.info(f"Current UTC time {current_utc_time}")
-
-
-def fetch_article(url: str) -> str | None:
-    """Requests a page from URL via HTTP"""
-
-    logging.info(f"Fetching URL: {url}\n")
-
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        content_type = response.headers.get("Content-Type", "")
-    except RequestException as e:
-        logging.error(f"Caught Request Exception {e}")
-        return None
-
-    if response.status_code == 200 and "text/html" in content_type:
-        return parse_article(response)
-    else:
-        return None
-
-
-def parse_article(response: Response) -> str | None:
-    """Parses page to extract text content."""
-
-    soup = BeautifulSoup(response.content, "html.parser")
-    noise_tags = [
-        "nav",
-        "footer",
-        "header",
-        "aside",
-        "script",
-        "meta",
-        "style",
-        "form",
-        "svg",
-        "noscript",
-        "iframe",
-        "button",
-    ]
-
-    noise_selectors = [
-        '[role="navigation"]',
-        '[role="complementary"]',
-        '[role="banner"]',
-        ".comments",
-        ".comment-section",
-        "#comments",
-        ".sidebar",
-        "#sidebar",
-        ".social-share",
-        ".share-buttons",
-        ".sharing",
-        ".related-posts",
-        ".recommended",
-        ".read-next",
-        ".newsletter-signup",
-        ".subscribe",
-        ".cookie-banner",
-        ".cookie-consent",
-        ".author-bio",
-        ".author-card",
-        ".table-of-contents",
-        ".toc",
-        ".breadcrumb",
-        ".breadcrumbs",
-        ".pagination",
-        ".ad",
-        ".advertisement",
-        ".sponsored",
-    ]
-
-    for selector in noise_selectors:
-        for el in soup.select(selector):
-            el.decompose()
-
-    for tag_noise in soup.find_all(noise_tags):
-        tag_noise.decompose()
-
-    content = soup.find("article") or soup.find("main") or soup.find("body")
-
-    if content:
-        text = content.get_text(separator="\n", strip=True)
-        if len(text) < 200:
-            return None
-        logging.info(f"Extracted {len(text)} chars from content.")
-        return text
 
 
 def chat_with_ollama(
@@ -225,57 +98,8 @@ def chat_with_ollama(
     return response
 
 
-def ingest_rss_feeds() -> dict:
-    """Parse RSS feeds and return dictionary of information"""
-    """TODO: Add some try/except timeout/rate limit handling"""
-    feeds = None
-    with open("feeds.json", "r") as json_file:
-        feeds = json.load(json_file)
-    results = {}
-
-    start = perf_counter()
-    for name, url in feeds.items():
-        results[name] = []
-        feed = feedparser.parse(url)
-        for entry in feed.entries:
-            date = entry.get("published_parsed", None) or entry.get(
-                "updated_parsed", None
-            )
-            if date:
-                timestamp = mktime(date)  # type: ignore[arg-type]
-                datetime_obj = datetime.fromtimestamp(timestamp, UTC)
-                if datetime_obj > current_utc_time - timedelta(hours=TIMEFRAME_HOURS):
-                    results[name].append(entry)
-        if results.get(name, []):
-            logging.debug(f"Got {len(results.get(name, ''))} recent entries for {name}")
-    end = perf_counter()
-    logging.debug(f"RSS parser finished in {end - start}s")
-    return results
-
-
-def build_researcher_prompt(interests: list[str], articles: str) -> str:
-    prompt = f"""You are a researcher of news stories for an AI / ML Ops professional interested in the following topics: {interests}. 
-    Specifically focus on new technology or product releases, workflows, techniques, or otherwise 'technical' content rather than social or political.
-    Given a list of articles in the following format:
-            "source": source,
-            "title": entry.title,
-            "summary": entry.summary,
-            "link": entry.link
-    
-    1. Select no more than 10 articles that best match the interest topics and criteria.
-        - Try to use a mixture of sources to capture a variety of topics.
-        - Prioritize content from: Hugging Face Blog, MLOps Community, CNCF Blog when available
-    2. Gather the UNIQUE links for each article 
-    3. Return ONLY a JSON array of selected article links, nothing else. Example format:
-["https://...", "https://..."]
-    
-    ARTICLES:
-    {articles}
-    """
-    return prompt
-
-
 def summarize_article(article: dict):
+    """Uses LLM to summarize an article given trimmed content, returns JSON with summary and metadata"""
     body = {re.sub(r"<[^>]+>", "", article.get("content", "NO CONTENT"))}
     response = chat_with_ollama(
         RESEARCHER_MODEL,
@@ -297,7 +121,7 @@ def summarize_article(article: dict):
 
 
 def researcher(raw_articles: dict[str, list]) -> list[dict] | None:
-    """Refine article results into best candidates"""
+    """Researcher Agent, refines article results into best candidates and summarizes"""
     logging.info(
         f"Ingested {sum(len(v) for v in raw_articles.values())} total articles from {len(raw_articles)} feeds"
     )
@@ -383,7 +207,7 @@ def researcher(raw_articles: dict[str, list]) -> list[dict] | None:
 def writer(
     articles: list[dict[str, str]], previous_draft: str | None, feedback: str | None
 ) -> str | None:
-    """Take curated articles and generate a Newsletter.MD"""
+    """Writer Agent, takes curated articles and generates a newsletter"""
     logging.info(f"Writer recieved {len(articles)} articles.")
     newsletter = ""
     if feedback is None:
@@ -406,7 +230,7 @@ def writer(
 
 
 def editor(draft: str) -> str | None:
-    """Take draft newsletter and provide feedback, if no edits, return LGTM!"""
+    """Editor Agent, takes draft newsletter and provides feedback, if no edits, returns 'LGTM'"""
 
     response = chat_with_ollama(
         EDITOR_MODEL,
@@ -436,6 +260,7 @@ def upload_file(file_name, bucket, object_name=None):
     s3_client = boto3.client("s3", region_name=AWS_REGION)
     try:
         response = s3_client.upload_file(file_name, bucket, object_name)
+        logging.info(response)
     except ClientError as e:
         logging.error(e)
         return False
