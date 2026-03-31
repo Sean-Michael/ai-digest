@@ -2,7 +2,7 @@
 File: main.py
 Author: Sean-Michael Riesterer
 Description: Agentic AI workflow for gathering RSS feed based content into a newsfeed.
-Version:
+Version: v1.0.0
 """
 
 import feedparser

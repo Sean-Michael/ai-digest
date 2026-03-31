@@ -1,3 +1,9 @@
+"""
+File: prompts.py
+Author: Sean-Michael Riesterer
+Description: Versioned prompt templates with render fucntion and pydantic models.
+"""
+
 from pydantic import BaseModel
 from string import Template
 
