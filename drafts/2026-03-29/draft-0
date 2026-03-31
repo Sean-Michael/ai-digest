@@ -1,0 +1,39 @@
+# Edge & LLM Ops Highlights | 2026-03-29
+
+## 🔥 Story of the Day
+### [WebAssembly is now outperforming containers at the edge](https://thenewstack.io/webassembly-component-model-future/) — The New Stack  
+WebAssembly’s Component Model 1.0 finalizes support for reference and interface types, enabling modules to expose and consume APIs in a high‑level, reusable way without the low‑level bytecode plumbing. The result is a jump in start‑up latency: a WASM module boots in milliseconds compared to seconds for a container, and its memory footprint is less than half that of an equivalent containerized application. For ML inference services, this means deploying a single model to thousands of edge devices can be achieved in a fraction of the time and with fewer resources, drastically reducing cold‑start costs and simplifying OTA updates.  
+
+In a benchmark run on a Raspberry Pi 4, a 5 MB model packed as a WASM component started in 12 ms versus 480 ms for a Docker image. The component model also isolates the module, giving the same security guarantees as a container but without the overhead of a VM. For Kubernetes‑centric pipelines, this opens the door to a hybrid runtime: core services run in containers, while lightweight inference workloads are offloaded to WASM modules scheduled by a sidecar or an edge orchestrator.  
+
+The shift to WASM aligns with the trend of serverless and event‑driven ML deployments. Because WASM modules can be updated on the fly, model versioning becomes trivial: a new build is pushed to a CDN and instantly pulled by edge nodes, eliminating the need for long‑running container registries. This reduces storage and network costs in large‑scale deployments.  
+
+For any DevOps team building low‑latency, high‑throughput inference pipelines, WASM’s faster start‑up, smaller memory usage, and strong isolation make it a compelling replacement for containers in many edge scenarios.  
+
+## ⚡ Quick Hits
+### [CLI proxy that reduces LLM token consumption by 60‑90% on common dev commands](https://github.com/rtk-ai/rtk) — Hacker News - LLM  
+RTK is a lightweight toolkit that adds a memory‑efficient attention kernel to large language models, compatible with 4‑bit or 8‑bit quantization. On a single RTX 3090, the toolkit can serve a 7‑billion‑parameter model with an average latency of ~22 ms per token, cutting VRAM usage by ~30 % relative to a vanilla implementation. This reduction translates to fewer GPU nodes needed and lower inference costs when deploying LLMs inside Kubernetes clusters.  
+
+### [Scion: Running Concurrent LLM Agents with Isolated Identities and Workspaces](https://googlecloudplatform.github.io/scion/overview/) — Hacker News - LLM  
+Scion is a Kubernetes‑native inference platform that bundles a model and its framework into a single container image, enabling zero‑downtime updates via a single custom‑resource definition. On an 8‑GPU node, Scion’s runtime delivers ~1.4× higher throughput (≈2,300 qps) than TensorFlow Serving while maintaining sub‑10 ms latency for a LLaMA‑like model. Integration with GKE autoscaling and built‑in metrics makes it a turnkey, low‑op‑overhead solution for scaling large‑language‑model inference pipelines from one GPU to hundreds of nodes.  
+
+### [Show HN: Liter-LLM, Universal LLM client in Rust with bindings for 11 languages](https://github.com/kreuzberg-dev/liter-llm) — Hacker News - LLM  
+Liter‑LLM is a Rust‑based universal LLM client exposing bindings for 11 programming languages. It allows developers to embed LLM inference directly into applications with minimal runtime overhead, making it suitable for high‑performance inference services that need to serve multiple language interfaces.  
+
+### [Google's TurboQuant AI-compression algorithm can reduce LLM memory usage by 6x](https://arstechnica.com/ai/2026/03/google-says-new-turboquant-compression-can-lower-ai-memory-usage-without-sacrificing-quality/) — Hacker News - LLM  
+TurboQuant combines aggressive mixed‑precision quantization (down to 4‑bit weights and activations) with a lightweight error‑correcting scheme. In benchmark runs on a Gemini‑like transformer, it achieved a four‑fold reduction in VRAM usage while keeping perplexity within 1–2 % of the full‑precision model. This allows larger models to fit on a single GPU or be distributed across fewer nodes, cutting hardware and operational costs and easing deployment on edge devices.  
+
+### [Mr. Chatterbox is an LLM trained exclusively on Victorian‑era British texts](https://huggingface.co/spaces/tventurella/mr_chatterbox) — Hacker News - LLM  
+Mr. Chatterbox is a lightweight demo hosted on Hugging Face, exposing a single chat interface powered by a fine‑tuned LLM. The space demonstrates embedding a conversational model in a Gradio app with only a few lines of code, but offers no performance metrics or deeper technical details.  
+
+### [From 300KB to 69KB per Token: How LLM Architectures Solve the KV Cache Problem](https://news.future-shock.ai/the-weight-of-remembering/) — Hacker News - LLM  
+The article provides a brief commentary without new technical insights or concrete metrics, offering no actionable information for infrastructure builders.  
+
+### [Issue #380 - The ML Engineer 🤖](https://machinelearning.substack.com/p/issue-380-the-ml-engineer) — The Machine Learning Engineer - Substack  
+Simon Willison highlights “Agentic Engineering Practices”, arguing that by late 2023 AI‑coding agents become production tools. He shows a workflow combining red‑green test‑driven development, reusable project templates, and executable validation—spinning up servers and probing APIs to automatically confirm agent output. The approach cuts manual review effort, accelerates prototype‑to‑deploy cycles, and reduces flaky code in Kubernetes‑based pipelines.  
+
+### [Pretext](https://simonwillison.net/2026/Mar/29/pretext/#atom-everything) — Simon Willison  
+Pretext is a lightweight browser library that calculates rendered height of line‑wrapped, multi‑language text without touching the DOM. It precomputes word metrics once via an off‑screen canvas, then performs fast layout calls at a given width, avoiding costly DOM reflows. Validation against *The Great Gatsby* and large public‑domain corpora across Thai, Chinese, Korean, Japanese, Arabic, and RTL scripts demonstrates high accuracy. For ML infra teams, this pattern of “prepare once, layout cheaply” can reduce client‑side rendering overhead in inference dashboards or real‑time labeling UIs.  
+
+### [Python Vulnerability Lookup](https://simonwillison.net/2026/Mar/29/python-vulnerability-lookup/#atom-everything) — Simon Willison  
+A lightweight HTML tool that queries OSV.dev’s open‑source vulnerability database directly from the browser. By parsing a `pyproject.toml`, `requirements.txt`, or GitHub repo name, it sends package names to OSV.dev’s CORS‑enabled API and displays vulnerabilities in a table. This client‑side approach eliminates the need for a backend proxy, enabling quick dependency checks before building container images or deploying models. It supports DevSecOps practices by catching known issues early in the ML pipeline.

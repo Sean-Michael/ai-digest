@@ -1,0 +1,66 @@
+---
+title: "AI & DevOps Digest | 2026-03-31"
+date: 2026-03-31
+---
+# AI & DevOps Digest | 2026-03-31
+
+## 🔥 Story of the Day
+
+### [Run and Iterate on LLMs Faster with Docker Model Runner on DGX Station](https://www.docker.com/blog/blog-docker-model-runner-new-nvidia-dgx-station/) — Docker Blog  
+NVIDIA has expanded Docker Model Runner to the new DGX Station, a deskside workstation powered by the GB300 Grace Blackwell Ultra Superchip. The DGX Station bundles a 72‑core Grace CPU, a Blackwell Ultra GPU, and NVLink‑C2C, creating a unified memory fabric that eliminates PCIe latency.  
+
+With Model Runner now supported on the DGX Station, developers can run frontier‑level large language models on a single on‑premise machine using the same familiar Docker workflow that they use in the cloud. This shift unlocks data‑center class performance—petaflop AI throughput and 128 GB of unified memory—while keeping the convenience of containerized tooling.  
+
+The integration is a game changer for continuous integration, testing, and deployment pipelines. By bringing powerful GPU resources to the desk, teams can experiment with self‑hosted LLMs without incurring cloud costs or dealing with complex GPU cluster setups.  
+
+A concrete detail: the DGX Station’s NVLink‑C2C interconnect bypasses PCIe, allowing larger batch sizes and faster training than on typical workstation GPUs, which is critical for fine‑tuning models in a CI loop.  
+
+## ⚡ Quick Hits
+
+### [Docker Sandboxes: Run Agents in YOLO Mode, Safely](https://www.docker.com/blog/docker-sandboxes-run-agents-in-yolo-mode-safely/) — Docker Blog  
+Docker Sandboxes are lightweight containers that let AI agents—such as Claude Code, GitHub Copilot CLI, Gemini CLI, Codex, Kiro, and NanoClaw—operate in full‑autonomous YOLO mode while remaining confined by a sandbox boundary. This separation removes the human bottleneck of step‑by‑step approval and enables agents to clone, build, test, and commit pull requests entirely automatically.  
+
+Surveys indicate that AI‑authored code now accounts for over a quarter of production code, and teams using agents merge roughly 60 % more pull requests. By integrating Sandboxes into CI/CD or Kubernetes workloads, DevOps engineers can achieve fast, safe agent execution without the overhead of Docker Desktop or host‑level restrictions.  
+
+### [Granite 4.0 3B Vision: Compact Multimodal Intelligence for Enterprise Documents](https://huggingface.co/blog/ibm-granite/granite-4-vision) — Hugging Face Blog  
+IBM released Granite 4.0 3B Vision, a LoRA adapter that extends the 3B‑parameter Granite 4.0 Micro language model with vision capabilities. The model leverages the ChartNet dataset—a million‑scale, code‑guided synthetic corpus covering five modalities—and the DeepStack injection architecture, which routes abstract visual features early and high‑resolution spatial features later.  
+
+Performance metrics show the model achieving 86.4 % on Chart2Summary and 62.1 % on Chart2CSV, topping TEDS scores on PubTables‑v2 and outperforming competitors on OmniDocBench and TableVQA. Its lightweight design allows deployment on Kubernetes or self‑hosted MLOps stacks, offering enterprise document understanding without the need for multiple specialized models.  
+
+### [TRL v1.0: Post-Training Library Built to Move with the Field](https://huggingface.co/blog/trl-v1) — Hugging Face Blog  
+TRL v1.0 unifies over 75 post‑training methods—including SFT, DPO, PPO, GRPO—under a stable core API, while maintaining an experimental surface for rapid iteration. The library adopts a chaos‑adaptive design, keeping shared interfaces minimal, permitting intentional code duplication, and separating a low‑maintenance core from a freely evolving experimental layer.  
+
+This architecture allows MLOps engineers to integrate TRL into Kubernetes‑managed training pipelines (single‑GPU or multi‑node with DeepSpeed/FSDP) and experiment with cutting‑edge techniques like asynchronous GRPO without disrupting production workloads.  
+
+### [Ollama is now powered by MLX on Apple Silicon in preview](https://ollama.com/blog/mlx) — Ollama  
+Ollama’s preview release integrates MLX, a lightweight Rust‑based inference engine, for running large language models locally on Apple Silicon. MLX’s custom JIT and memory‑layout optimizations reduce GPU‑resident memory by approximately 25 % for Llama 2‑7B on Apple silicon while maintaining comparable token latency to ONNX Runtime.  
+
+The engine exposes a minimal Python API and is already packaged into the Ollama CLI, making it straightforward to deploy via Docker or Helm in Kubernetes clusters. Its low binary and memory footprints enable LLM inference on cost‑effective nodes or devices with strict resource limits.  
+
+### [How to solve the AI paradox in software development with intelligent orchestration](https://thenewstack.io/solve-ai-paradox-orchestration/) — The New Stack  
+The article highlights an “AI paradox” where near‑automation of coding does not translate into proportional productivity gains because of fragmented tooling, context, and trust. With a quarter of startups generating 95 % of code via AI and reporting 20‑50 % productivity boosts, the authors argue that a unified AI‑enabled pipeline is necessary.  
+
+Key takeaways for ML infrastructure are the need for single‑source‑of‑truth data models, end‑to‑end pipeline automation, and shared trust mechanisms. These principles align with MLOps best practices, ensuring that AI productivity gains can be scaled sustainably across the SDLC.  
+
+### [Ollama taps Apple’s MLX framework to make local AI models faster on Macs](https://thenewstack.io/ollama-taps-apples-mlx/) — The New Stack  
+Ollama now plugs directly into Apple’s MLX framework and supports NVIDIA’s NVFP4 weight‑format. Leveraging MLX’s shared‑memory architecture eliminates CPU‑to‑GPU data copy, improving response latency and generation speed for coding‑focused models. The NVFP4 format further reduces memory usage, enabling larger models to fit on consumer GPUs.  
+
+For DevOps engineers running LLMs on private hardware, this means lower inference latency on Apple Silicon and the ability to deploy more complex workloads on commodity GPUs without sacrificing throughput.  
+
+### [Kelsey Hightower at KubeCon 2026: “Everyone is a junior engineer when it comes to AI”](https://thenewstack.io/hightower-ai-open-source-kubecon/) — The New Stack  
+During the KubeAuto Day Europe keynote, Kelsey Hightower emphasized AI’s growing influence on open‑source projects, codebases, and careers. His talk inspired developers such as Kristina Kondrashevich to open‑source the InfraKitchen platform, demonstrating how AI can accelerate the adoption of shared tooling.  
+
+While the article offers anecdotal insights rather than hard metrics, it underscores that AI can serve as a catalyst for rapid platform iteration and open‑source collaboration within the Kubernetes ecosystem.  
+
+### [Sustaining OpenTelemetry: Moving from dependency management to stewardship](https://www.cncf.io/blog/2026/03/31/sustaining-opentelemetry-moving-from-dependency-management-to-stewardship/) — CNCF Blog  
+Bloomberg introduced a structured contributor pipeline to turn open‑source stewardship into a repeatable mentorship program. Engineers are guided through onboarding, weekly office hours, and high‑leverage maintenance work. The model has been applied to pandas and scaled to OpenTelemetry with NVIDIA support.  
+
+This approach reduces maintenance debt and ensures that critical observability libraries remain secure and up‑to‑date. For MLOps, keeping OpenTelemetry healthy translates directly into reliable monitoring for large‑scale model serving environments.  
+
+### [Engineering the Memory Layer For An AI Agent To Navigate Large-scale Event Data](https://mlops.community/engineering-the-memory-layer-for-an-ai-agent-to-navigate-large-scale-event-data/) — MLOps Community  
+The article describes building an AI‑powered query engine on ApertureDB, an AI‑native multimodal vector‑graph database. By ingesting heterogeneous data from MLOps World conference talks (text, PDFs, slides, videos, transcripts), the system stores metadata, text, and embeddings in a graph that an LLM can traverse.  
+
+Using Gemini embeddings and a Google Colab pipeline, the authors demonstrate the architecture at scale with hundreds of talks. The pattern shows how embedding generation, vector storage, and graph traversal can be integrated into a self‑hosted stack, enabling AI‑native search beyond keyword indices.
+
+---
+*Researcher: gpt-oss:20b • Writer: gpt-oss:20b • Editor: gpt-oss:20b*

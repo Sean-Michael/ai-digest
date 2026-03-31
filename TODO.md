@@ -12,3 +12,4 @@
 - [ ] Change environment vars to click CLI options
 - [x] Add HTTP page request and parse function
 - [ ] Add tool calling to writer/editor
+- [x] isolate prompts into their own file
