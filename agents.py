@@ -30,6 +30,10 @@ from prompts import (
     EDITOR_SYSTEM_PROMPT,
     EDITOR_USER_PROMPT,
 )
+from opentelemetry import trace
+from openinference.instrumentation import using_prompt_template, using_session
+
+tracer = trace.get_tracer(__name__)
 
 
 def chat_with_ollama(
@@ -40,36 +44,70 @@ def chat_with_ollama(
     options=None,
     tools=None,
 ) -> ChatResponse:
-    """Sends a chat to a model with a prompt"""
-    message = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt},
-    ]
-    start = perf_counter()
+    with tracer.start_as_current_span("llm.chat") as span:
+        span.set_attribute("llm.model_name", model_name)
+        span.set_attribute("input.value", user_prompt)
+        span.set_attribute("llm.system", system_prompt)
 
-    response = chat(
-        model=model_name,
-        messages=message,
-        think=think,
-        options=options or {"num_ctx": NUM_CTX},
-        tools=tools,
-    )
+        """Sends a chat to a model with a prompt"""
+        start = perf_counter()
 
-    finish = perf_counter()
-    logging.debug(f"Response from Ollama: {response}")
-    logging.debug(f"Chat finished in {finish - start}s")
-    return response
+        response = chat(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            think=think,
+            options=options or {"num_ctx": NUM_CTX},
+            tools=tools,
+        )
+        finish = perf_counter()
+
+        # token counts
+        prompt_tokens = response.prompt_eval_count or 0
+        output_tokens = response.eval_count or 0
+        span.set_attribute("llm.token_count.prompt", prompt_tokens)
+        span.set_attribute("llm.token_count.completion", output_tokens)
+        span.set_attribute("llm.token_count.total", prompt_tokens + output_tokens)
+
+        # latency timings in ms (duration is in nanoseconds so divide by 1e+6)
+        span.set_attribute("llm.latency.total_ms", (response.total_duration or 0) / 1e6)
+        span.set_attribute(
+            "llm.latency.prompt_eval_ms", (response.prompt_eval_duration or 0) / 1e6
+        )
+        span.set_attribute(
+            "llm.latency.generation_ms", (response.eval_duration or 0) / 1e6
+        )
+        span.set_attribute("llm.latency.load_ms", (response.load_duration or 0) / 1e6)
+
+        # token throughput
+        if response.eval_duration and response.eval_count:
+            tokens_per_second = response.eval_count / (response.eval_duration / 1e9)
+            span.set_attribute("llm.throughput.tokens_per_second", tokens_per_second)
+
+        span.set_attribute("llm.num_ctx", (options or {}).get("num_ctx", NUM_CTX))
+
+        output = response.message.content or ""
+        span.set_attribute("output.value", output)
+        logging.debug(f"Response from Ollama: {response}")
+        logging.debug(f"Chat finished in {finish - start}s")
+        return response
 
 
 def summarize_article(article: dict):
     """Uses LLM to summarize an article given trimmed content, returns JSON with summary and metadata"""
     body = {re.sub(r"<[^>]+>", "", article.get("content", "NO CONTENT"))}
-    response = chat_with_ollama(
-        RESEARCHER_MODEL,
-        SUMMARY_SYSTEM_PROMPT.template,
-        SUMMARY_USER_PROMPT.render(article=body),
-        think=False,
-    )
+
+    with using_prompt_template(
+        template=SUMMARY_USER_PROMPT.template, version=SUMMARY_USER_PROMPT.version
+    ):
+        response = chat_with_ollama(
+            RESEARCHER_MODEL,
+            SUMMARY_SYSTEM_PROMPT.template,
+            SUMMARY_USER_PROMPT.render(article=body),
+            think=False,
+        )
 
     summary = response.message.content
     logging.debug(f"Summary of {article.get('title')}\n\t{summary}")

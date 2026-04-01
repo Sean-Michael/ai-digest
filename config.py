@@ -11,6 +11,7 @@ from pathlib import Path
 from pythonjsonlogger.json import JsonFormatter
 import os
 
+OTLP_ENDPOINT = "http://localhost:6006/v1/traces"
 # Boolean to control wether or not the generated digest is 'published' by uploading to s3
 PUBLISH = False
 
