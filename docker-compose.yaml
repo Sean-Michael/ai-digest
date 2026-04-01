@@ -1,8 +1,9 @@
 services:
   app:
-    build: .
-    depends_on:
-      - arize-phoenix
-  arize-phoenix:
+    build:
+      dockerfile: Dockerfile
+  phoenix:
     image: arizephoenix/phoenix:commit-d501db9
-    ports: 6060
+    ports: 
+      - "6006:6006"
+      - "4317:4317"

@@ -23,13 +23,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project
 
 COPY . /app
+RUN chown -R nonroot:nonroot /app
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked
+    uv sync --locked --no-dev
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-ENTRYPOINT []
-
 USER nonroot
 
-CMD ["uv", "run", "main.py"]
+CMD ["python", "main.py"]

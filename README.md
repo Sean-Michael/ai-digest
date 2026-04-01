@@ -53,3 +53,18 @@ Not everything is available in a nice RSS feed and I will have to do some browse
 I'll just keep a running list of things that are in the works..
 
 - [Anthropic Engineering](https://www.anthropic.com/engineering)
+
+## Local Development
+
+Start phoenix to gather traces:
+
+```bash
+docker run -p 6006:6006 -p 4317:4317 -i -t arizephoenix/phoenix:latest
+```
+
+Start the Agents:
+
+```bash
+uv run main.py
+```
+

@@ -1,0 +1,6 @@
+- Verify the authenticity of the “Holo3” story (URL https://huggingface.co/blog/Hcompany/holo3). It may be a fabricated or non‑public release; replace it with a real, sourced item if necessary.  
+- Verify the authenticity of the “Falcon Perception” story (URL https://huggingface.co/blog/tiiuae/falcon-perception). Check that this model and blog post actually exist; if not, substitute a real, verifiable piece.  
+- All markdown links are correctly formatted with `[text](URL)`.  
+- The “Story of the Day” sections are substantively deeper than the Quick Hits; no re‑sentences or duplicate content.  
+- No filler phrases such as “in this article the author discusses” are present.  
+- Ensure that any remaining stories truly come from reputable, accessible sources before printing.

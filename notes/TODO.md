@@ -26,3 +26,4 @@
     from config import settings
     print(settings.db_url)
     ```
+- [ ] Actually do structured output I guess ollama can do this kina like PydanticAI https://docs.ollama.com/capabilities/structured-outputs#python-2
