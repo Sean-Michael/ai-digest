@@ -1,4 +1,8 @@
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system --gid 999 nonroot \
  && useradd --system --gid 999 --uid 999 --create-home nonroot
