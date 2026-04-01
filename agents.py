@@ -44,14 +44,13 @@ def chat_with_ollama(
     options=None,
     tools=None,
 ) -> ChatResponse:
+    """Sends a chat to a model with a prompt"""
     with tracer.start_as_current_span("llm.chat") as span:
         span.set_attribute("llm.model_name", model_name)
         span.set_attribute("input.value", user_prompt)
         span.set_attribute("llm.system", system_prompt)
 
-        """Sends a chat to a model with a prompt"""
         start = perf_counter()
-
         response = chat(
             model=model_name,
             messages=[
@@ -97,17 +96,21 @@ def chat_with_ollama(
 
 def summarize_article(article: dict):
     """Uses LLM to summarize an article given trimmed content, returns JSON with summary and metadata"""
-    body = {re.sub(r"<[^>]+>", "", article.get("content", "NO CONTENT"))}
-
-    with using_prompt_template(
-        template=SUMMARY_USER_PROMPT.template, version=SUMMARY_USER_PROMPT.version
-    ):
-        response = chat_with_ollama(
-            RESEARCHER_MODEL,
-            SUMMARY_SYSTEM_PROMPT.template,
-            SUMMARY_USER_PROMPT.render(article=body),
-            think=False,
-        )
+    body = re.sub(r"<[^>]+>", "", article.get("content", "NO CONTENT"))
+    with tracer.start_as_current_span("summarize.agent") as span:
+        span.set_attribute("llm.system_prompt.template", SUMMARY_SYSTEM_PROMPT.template)
+        span.set_attribute("llm.system_prompt.version", SUMMARY_SYSTEM_PROMPT.version)
+        with using_prompt_template(
+            template=SUMMARY_USER_PROMPT.template,
+            version=SUMMARY_USER_PROMPT.version,
+            variables={"article": body[:200]},
+        ):
+            response = chat_with_ollama(
+                RESEARCHER_MODEL,
+                SUMMARY_SYSTEM_PROMPT.template,
+                SUMMARY_USER_PROMPT.render(article=body),
+                think=False,
+            )
 
     summary = response.message.content
     logging.debug(f"Summary of {article.get('title')}\n\t{summary}")
@@ -172,18 +175,28 @@ def researcher(raw_articles: dict[str, list]) -> list[dict] | None:
     trimmed_for_curation = [
         {k: a[k] for k in ("source", "title", "summary", "link")} for a in trimmed
     ]
-    researcher_prompt = RESEARCHER_USER_PROMPT.render(
-        interests=INTERESTS, articles=json.dumps(trimmed_for_curation)
-    )
     response = ""
 
     try:
-        response = chat_with_ollama(
-            RESEARCHER_MODEL,
-            RESEARCHER_SYSTEM_PROMPT.template,
-            researcher_prompt,
-            think=False,
-        )
+        with tracer.start_as_current_span("researcher.agent") as span:
+            span.set_attribute(
+                "llm.system_prompt.template", RESEARCHER_SYSTEM_PROMPT.template
+            )
+            span.set_attribute(
+                "llm.system_prompt.version", RESEARCHER_SYSTEM_PROMPT.version
+            )
+            with using_prompt_template(
+                template=RESEARCHER_USER_PROMPT.template,
+                version=RESEARCHER_USER_PROMPT.version,
+            ):
+                response = chat_with_ollama(
+                    RESEARCHER_MODEL,
+                    RESEARCHER_SYSTEM_PROMPT.template,
+                    RESEARCHER_USER_PROMPT.render(
+                        interests=INTERESTS, articles=json.dumps(trimmed_for_curation)
+                    ),
+                    think=False,
+                )
     except Exception as e:
         logging.error(f"Caught Exception: {e}")
         return None
@@ -210,21 +223,27 @@ def writer(
 ) -> str | None:
     """Writer Agent, takes curated articles and generates a newsletter"""
     logging.info(f"Writer recieved {len(articles)} articles.")
-    newsletter = ""
     if feedback is None:
         feedback = ""
 
-    response = chat_with_ollama(
-        WRITER_MODEL,
-        WRITER_SYSTEM_PROMPT.template,
-        WRITER_USER_PROMPT.render(
-            date_str=DATE_STR,
-            articles=articles,
-            feedback=feedback,
-            draft=previous_draft,
-        ),
-        think=False,
-    )
+    with tracer.start_as_current_span("writer.agent") as span:
+        span.set_attribute("llm.system_prompt.template", WRITER_SYSTEM_PROMPT.template)
+        span.set_attribute("llm.system_prompt.version", WRITER_SYSTEM_PROMPT.version)
+        with using_prompt_template(
+            template=WRITER_USER_PROMPT.template,
+            version=WRITER_USER_PROMPT.version,
+        ):
+            response = chat_with_ollama(
+                WRITER_MODEL,
+                WRITER_SYSTEM_PROMPT.template,
+                WRITER_USER_PROMPT.render(
+                    date_str=DATE_STR,
+                    articles=articles,
+                    feedback=feedback,
+                    draft=previous_draft,
+                ),
+                think=False,
+            )
     newsletter = response.message.content
     logging.info("Writer generated draft.")
     return newsletter
@@ -232,13 +251,19 @@ def writer(
 
 def editor(draft: str) -> str | None:
     """Editor Agent, takes draft newsletter and provides feedback, if no edits, returns 'LGTM'"""
-
-    response = chat_with_ollama(
-        EDITOR_MODEL,
-        EDITOR_SYSTEM_PROMPT.template,
-        EDITOR_USER_PROMPT.render(date_str=DATE_STR, draft=draft),
-        think=False,
-    )
+    with tracer.start_as_current_span("editor.agent") as span:
+        span.set_attribute("llm.system_prompt.template", EDITOR_SYSTEM_PROMPT.template)
+        span.set_attribute("llm.system_prompt.version", EDITOR_SYSTEM_PROMPT.version)
+        with using_prompt_template(
+            template=EDITOR_USER_PROMPT.template,
+            version=EDITOR_USER_PROMPT.version,
+        ):
+            response = chat_with_ollama(
+                EDITOR_MODEL,
+                EDITOR_SYSTEM_PROMPT.template,
+                EDITOR_USER_PROMPT.render(date_str=DATE_STR, draft=draft),
+                think=False,
+            )
     feedback = response.message.content
     logging.info("Editor generated feedback.")
     return feedback
