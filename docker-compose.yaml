@@ -1,0 +1,8 @@
+services:
+  app:
+    build: .
+    depends_on:
+      - arize-phoenix
+  arize-phoenix:
+    image: arizephoenix/phoenix:commit-d501db9
+    ports: 6060
