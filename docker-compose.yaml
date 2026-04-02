@@ -2,8 +2,12 @@ services:
   app:
     build:
       dockerfile: Dockerfile
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
   phoenix:
     image: arizephoenix/phoenix:commit-d501db9
-    ports: 
+    ports:
       - "6006:6006"
       - "4317:4317"
