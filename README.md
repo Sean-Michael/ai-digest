@@ -8,15 +8,58 @@ Inspired by a comment Addy Osmani made in his recent chat with Tim O'Reilly on a
 
 ## How It Works
 
-Three agents collaborate in a loop that mirrors how a small editorial team would work:
+Three agents collaborate in a loop that mirrors how a small editorial team would work. Each agent run goes through `chat_with_ollama()` in `agents.py` which wraps the Ollama Python SDK `chat()` call and instruments it with OpenTelemetry spans.
 
-1. **Researcher** — Ingests 26 RSS feeds, filters articles from the last 24 hours by my interests, fetches full content for thin entries (BeautifulSoup), and curates the top 10 articles with summaries.
+### Agents
 
-2. **Writer** — Takes the curated articles and drafts a markdown newsletter with a "Story of the Day" deep dive and "Quick Hits" section. Tone target: knowledgeable colleague, not a marketer.
+**Researcher** (`agents.py:researcher`)
+- **Input:** Raw RSS entries from all 26 feeds (dict of source → entries)
+- **Tools:** `fetch_article()` via `ThreadPoolExecutor` — for thin RSS entries (<200 chars), fetches the full page and parses with BeautifulSoup
+- **Prompts:** `RESEARCHER_SYSTEM_PROMPT` + `RESEARCHER_USER_PROMPT` — tells it to pick the top 10 articles matching my interests and return just a JSON array of links
+- **Then:** For each curated article, runs `summarize_article()` with `SUMMARY_SYSTEM_PROMPT` + `SUMMARY_USER_PROMPT`
+- **Output:** `list[dict]` — each with `source`, `title`, `summary`, `link`
 
-3. **Editor** — Reviews the draft. Either responds "LGTM" or gives specific actionable feedback. The writer revises and resubmits, up to 3 iterations.
+**Writer** (`agents.py:writer`)
+- **Input:** Curated articles from researcher, plus any previous draft and editor feedback
+- **Prompts:** `WRITER_SYSTEM_PROMPT` + `WRITER_USER_PROMPT` — template vars: `$date_str`, `$articles`, `$feedback`, `$draft`
+- **Output:** Markdown newsletter with "Story of the Day" deep dive + "Quick Hits" section
 
-The final edition gets written to `digests/` as markdown with YAML frontmatter, and optionally published to S3 for my website.
+**Editor** (`agents.py:editor`)
+- **Input:** The writer's draft
+- **Prompts:** `EDITOR_SYSTEM_PROMPT` + `EDITOR_USER_PROMPT` — template vars: `$date_str`, `$draft`
+- **Output:** Either `"LGTM"` or specific actionable feedback (never both)
+
+The writer and editor loop up to `MAX_REVISIONS` times. The final edition gets written to `digests/` as markdown with YAML frontmatter, and optionally published to S3 for my website.
+
+### Prompt Architecture
+
+All prompts live in `prompts.py` as Pydantic `BaseModel` instances:
+
+```python
+class Prompt(BaseModel):
+    agent: str        # which agent owns this prompt
+    prompt_type: str  # "system" or "user"
+    template: str     # python string.Template syntax ($var)
+    version: str      # semver, e.g. "v1.0.0"
+
+    def render(self, **kwargs) -> str:
+        return Template(self.template).substitute(**kwargs)
+```
+
+This gives each prompt a structured identity (agent, type, version) that gets carried into tracing. When an agent runs, the prompt version and template are set as span attributes so I can correlate model behavior with specific prompt versions in Phoenix.
+
+### Tracing with OpenInference
+
+Every agent call is wrapped with `openinference.instrumentation.using_prompt_template()` which attaches the prompt template and version to the current OpenTelemetry span. Combined with the `llm.chat` spans from `chat_with_ollama()`, each run captures:
+
+- Prompt template text + version
+- System and user prompt content
+- Token counts (prompt, completion, total)
+- Latency breakdown (total, prompt eval, generation, model load) in ms
+- Token throughput (tokens/sec)
+- Session ID via `using_session()` so all spans from one run are grouped
+
+All of this lands in Arize Phoenix at `localhost:6006`.
 
 ## Stack
 
