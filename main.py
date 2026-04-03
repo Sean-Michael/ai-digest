@@ -23,6 +23,7 @@ from config import (
     json_formatter,
     LOG_LEVEL,
     OTLP_ENDPOINT,
+    ENABLE_TRACING,
 )
 from agents import researcher, writer, editor
 from opentelemetry import trace as trace_api
@@ -54,12 +55,13 @@ def setup() -> None:
     for d in [DRAFT_DIR, DIGEST_DIR]:
         os.makedirs(d, exist_ok=True)
 
-    # Setup Otel tracing
-    resource = Resource(attributes={"service.name": "ai-newstand"})
-    tracer_provider = trace_sdk.TracerProvider(resource=resource)
-    span_exporter = OTLPSpanExporter(endpoint=OTLP_ENDPOINT)
-    tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
-    trace_api.set_tracer_provider(tracer_provider)
+    if ENABLE_TRACING and OTLP_ENDPOINT:
+        # Setup Otel tracing
+        resource = Resource(attributes={"service.name": "ai-newstand"})
+        tracer_provider = trace_sdk.TracerProvider(resource=resource)
+        span_exporter = OTLPSpanExporter(endpoint=OTLP_ENDPOINT)
+        tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+        trace_api.set_tracer_provider(tracer_provider)
 
 
 def main():
@@ -67,8 +69,8 @@ def main():
 
     setup()
 
-    session_id = str(uuid.uuid4())
-    with using_session(session_id):
+    id = str(uuid.uuid4())
+    with using_session(session_id=id):
         start_main = perf_counter()
         ready_to_publish = False
         final = ""

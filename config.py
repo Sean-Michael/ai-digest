@@ -14,6 +14,7 @@ import os
 OTLP_ENDPOINT = "http://localhost:6006/v1/traces"
 # Boolean to control wether or not the generated digest is 'published' by uploading to s3
 PUBLISH = False
+ENABLE_TRACING = True
 
 DATE_STR = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
 
@@ -28,7 +29,7 @@ LOG_FILE = (
 RESEARCHER_MODEL = "gemma4:e4b"
 WRITER_MODEL = "gemma4:e4b"
 EDITOR_MODEL = "gemma4:e4b"
-NUM_CTX = 32768
+NUM_CTX = 65536
 MAX_REVISIONS = 3
 TIMEFRAME_HOURS = 24
 INTERESTS = [
