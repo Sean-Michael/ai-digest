@@ -25,9 +25,9 @@ LOG_FILE = (
     LOG_DIR / DATE_STR / f"main-{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json"
 )
 
-RESEARCHER_MODEL = "gpt-oss:20b"
-WRITER_MODEL = "gpt-oss:20b"
-EDITOR_MODEL = "gpt-oss:20b"
+RESEARCHER_MODEL = "gemma4:e4b"
+WRITER_MODEL = "gemma4:e4b"
+EDITOR_MODEL = "gemma4:e4b"
 NUM_CTX = 32768
 MAX_REVISIONS = 3
 TIMEFRAME_HOURS = 24

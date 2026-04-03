@@ -1,0 +1,28 @@
+# MLOps Infrastructure & Open Model Deployment | 2026-04-03
+
+## 🔥 Story of the Day
+### Docker Hub Standardizes Model Distribution via OCI Artifacts [Gemma 4 is Here: Now Available on Docker Hub](https://www.docker.com/blog/gemma4-dockerhub/) — Docker Blog
+Docker Hub is establishing itself as a central repository for AI models, treating them as standard Open Container Initiative (OCI) artifacts. The availability of Gemma 4 in this container-ready format signifies a significant shift toward containerization for ML assets. This standardization removes the need for proprietary deployment tooling when integrating models into an existing MLOps stack.
+
+For infrastructure engineers managing Kubernetes workloads, this means model portability is decoupled from the deployment runtime. By adopting OCI artifacts, the entire lifecycle—from local testing to on-prem cluster deployment—can be managed using existing, familiar CI/CD pipelines, security scanners, and automated governance tools.
+
+A critical technical takeaway is the simple pull mechanism: `docker model pull gemma4`. This declarative approach to model consumption is highly valuable, as it formalizes the model artifact into the same deployable unit as application code, drastically lowering the operational overhead associated with model governance.
+
+## ⚡ Quick Hits
+### [Go-LLM-proxy – Lightweight LLM aggregator (vLLM, Llama-server)](https://go-llm-proxy.com) — Hacker News - LLM
+LLM Proxy acts as a unified gateway, abstracting LLM endpoint differences. It allows application logic to route requests seamlessly across various local or commercial model servers without modification. This is useful for standardizing rate limiting, centralized logging, or implementing sophisticated fallback logic across a heterogeneous model serving landscape.
+
+### [Show HN: Hallx – Hallucination risk scoring for LLM outputs](https://github.com/dhanushk-offl/hallx) — Hacker News - LLM
+Hallx implements a measurable output scoring layer that checks LLM responses against three criteria: required schema matching, run-to-run output consistency, and adherence to the initial context. It returns an actionable confidence score and risk level, providing quantitative guardrails for automated pipelines interfacing with providers like OpenAI or self-hosted Ollama.
+
+### [pgEdge's MCP for Agent-Database Interaction](https://thenewstack.io/pgedge-mcp-postgres-agents/) — The New Stack
+pgEdge released the MCP Server for Postgres, architecting a structured method for agentic AI to interact with Postgres. This focuses on data-source agnosticism coupled with built-in schema introspection, mitigating the risk of hallucinated API calls. Its ability to function in air-gapped environments makes it highly relevant for securing sensitive, on-premises data interactions.
+
+### [Argo CD and Kyverno for GitOps Policy Enforcement](https://www.cncf.io/blog/2026/04/02/gitops-policy-as-code-securing-kubernetes-with-argo-cd-and-kyverno/) — CNCF Blog
+Kyverno operates as a Kubernetes admission controller, enforcing rules written in standard YAML to validate, mutate, or block resource requests. Integrating Kyverno with Argo CD establishes a fully declarative, GitOps-driven governance plane, ensuring that all resource definitions adhere to defined policy code before deployment is finalized.
+
+### [Gemma 4's Efficient Open Model Deployment via PLE](https://simonwillison.net/2026/Apr/2/gemma-4/#atom-everything) — Simon Willison
+Google DeepMind released Gemma 4, incorporating Per-Layer Embeddings (PLE) into smaller variants like E2B and E4B. PLE maximizes parameter efficiency for edge inference by employing dedicated embedding tables rather than bloating the model's total parameter count, enabling high-capability, multi-modal open models for local execution.
+
+### [AI Agent Connectivity via LLM Proxy Abstraction](https://go-llm-proxy.com) — Hacker News - LLM
+*Note: This was already covered in Quick Hits but represents a core concept.* This project standardizes LLM interaction by sitting between the application and multiple backends (e.g., vLLM, Llama-server). It abstracts the specific API contracts, enabling infrastructure engineers to swap out underlying model serving engines without touching application service logic.

@@ -1,0 +1,32 @@
+---
+title: "MLOps Infrastructure & Open Model Deployment | 2026-04-03"
+date: 2026-04-03
+---
+# MLOps Infrastructure & Open Model Deployment | 2026-04-03
+
+## 🔥 Story of the Day
+### Docker Hub Standardizes Model Distribution via OCI Artifacts [Gemma 4 is Here: Now Available on Docker Hub](https://www.docker.com/blog/gemma4-dockerhub/) — Docker Blog
+Docker Hub is solidifying its role as a primary repository for AI assets by packaging models as standard Open Container Initiative (OCI) artifacts. The release of Gemma 4 in this format formalizes the packaging of large models, allowing them to be treated identically to application binaries. This standardization removes reliance on bespoke tooling specific to model registries, which is a major win for portability in CI/CD pipelines.
+
+For DevOps teams managing ML workloads on Kubernetes, this level of artifact standardization is crucial because it promotes a consistent governance model across the entire stack. By using OCI artifacts, the infrastructure can leverage existing, battle-tested security controls, scanning tools, and deployment patterns designed for containers, rather than needing to build custom governance hooks for every new model type.
+
+The key technical detail that engineers should note is the pull mechanism: `docker model pull gemma4`. This treats the model artifact as a first-class, pullable container object, integrating the model lifecycle directly into the existing container orchestration workflow.
+
+## ⚡ Quick Hits
+### [Go-LLM-proxy – Lightweight LLM aggregator (vLLM, Llama-server)](https://go-llm-proxy.com) — Hacker News - LLM
+LLM Proxy functions as a unified service gateway, abstracting the diverse API contracts of multiple LLM backends (e.g., vLLM, Llama-server). This abstraction layer allows developers to standardize external interactions, enabling centralized features like rate limiting, standardized logging, or sophisticated failover logic across a heterogeneous deployment environment.
+
+### [Show HN: Hallx – Hallucination risk scoring for LLM outputs](https://github.com/dhanushk-offl/hallx) — Hacker News - LLM
+Hallx introduces an actionable scoring layer to mitigate silent failures in automated pipelines. It validates LLM output against three dimensions: schema matching, run-to-run consistency, and contextual grounding. The output provides a quantifiable confidence score, allowing downstream services to implement heuristic guardrails based on measurable risk rather than blind trust.
+
+### [pgEdge's MCP for Agent-Database Interaction](https://thenewstack.io/pgedge-mcp-postgres-agents/) — The New Stack
+pgEdge's MCP Server for Postgres provides a structured interface for agentic interactions with Postgres, emphasizing data-source agnosticism. By enforcing a structured interaction layer, it mitigates the risk of LLM hallucinating database calls. Its capability to operate in air-gapped environments is key for secure, on-premises MLOps deployments.
+
+### [Argo CD and Kyverno for GitOps Policy Enforcement](https://www.cncf.io/blog/2026/04/02/gitops-policy-as-code-securing-kubernetes-with-argo-cd-and-kyverno/) — CNCF Blog
+Kyverno acts as a Kubernetes admission controller, enabling policies written in standard YAML to enforce governance at the API level—allowing validation, mutation, or blocking of resource requests. Coupling this with Argo CD locks policy enforcement into the GitOps workflow, ensuring that the desired state is both code-managed and strictly compliant.
+
+### [Gemma 4's Efficient Open Model Deployment via PLE](https://simonwillison.net/2026/Apr/2/gemma-4/#atom-everything) — Simon Willison
+Google DeepMind’s Gemma 4 models incorporate Per-Layer Embeddings (PLE) in smaller variants (like E2B/E4B). This technique boosts parameter efficiency for edge deployment by using dedicated, non-additive embedding tables for lookups, maximizing capability while reducing the overall parameter footprint for local, on-device inference.
+
+---
+*Researcher: gemma4:e4b • Writer: gemma4:e4b • Editor: gemma4:e4b*

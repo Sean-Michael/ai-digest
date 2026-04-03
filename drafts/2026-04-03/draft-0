@@ -1,0 +1,28 @@
+# MLOps Infrastructure & Open Model Deployment | 2026-04-03
+
+## 🔥 Story of the Day
+### Docker Hub becomes central repository for packaging AI models as OCI artifacts [Gemma 4 is Here: Now Available on Docker Hub](https://www.docker.com/blog/gemma4-dockerhub/) — Docker Blog
+Docker Hub is evolving into a primary distribution point for packaged AI models, treating them as standard OCI artifacts. The latest open model, Gemma 4, is now available in this container-ready format. This shift standardizes model packaging, making it significantly easier for engineers to integrate ML components into established container ecosystems.
+
+For those managing ML infrastructure on Kubernetes, this removes reliance on custom model-specific tooling. By adopting the OCI standard, developers can pipeline model deployments using existing CI/CD tooling, security scanning, and automation patterns without needing bespoke integrations for every new model release.
+
+A key technical detail to note is the simple consumption command: `docker model pull gemma4`. This level of standardization drastically lowers the operational burden of moving models from research/training environments into production, making portability from edge devices to large clusters seamless.
+
+## ⚡ Quick Hits
+### [Go-LLM-proxy – Lightweight LLM aggregator (vLLM, Llama-server)](https://go-llm-proxy.com) — Hacker News - LLM
+This project implements an LLM proxy layer to unify access across diverse LLM backends, abstracting away differences between providers and local servers. It allows application logic to remain agnostic to the underlying model serving mechanism.
+
+### [Show HN: Hallx – Hallucination risk scoring for LLM outputs](https://github.com/dhanushk-offl/hallx) — Hacker News - LLM
+Hallx introduces a multi-check scoring layer to quantify LLM output risk, validating results against schema match, run-to-run consistency, and context adherence. It supports providers including OpenAI, Anthropic, Gemini, and Ollama.
+
+### [pgEdge thinks MCP (not an API) is the right way for AI agents to talk to databases](https://thenewstack.io/pgedge-mcp-postgres-agents/) — The New Stack
+pgEdge announced the MCP Server for Postgres, enabling agentic AI connectivity to Postgres via a structured interface. The key benefit is data-source agnosticism combined with built-in security, crucially allowing operation in air-gapped environments.
+
+### [CNCF Blog: GitOps policy-as-code: Securing Kubernetes with Argo CD and Kyverno](https://www.cncf.io/blog/2026/04/02/gitops-policy-as-code-securing-kubernetes-with-argo-cd-and-kyverno/) — CNCF Blog
+Kyverno functions as a Kubernetes admission controller, enforcing policies written in standard YAML to validate, mutate, or block resource requests. Integrating this with Argo CD enables fully declarative, Git-sourced governance across the entire stack.
+
+### [Simon Willison: Gemma 4: Byte for byte, the most capable open models](https://simonwillison.net/2026/Apr/2/gemma-4/#atom-everything) — Simon Willison
+Google DeepMind released Gemma 4, including E2B and E4B, featuring Per-Layer Embeddings (PLE). PLE enhances parameter efficiency for on-device use by utilizing dedicated embedding tables rather than increasing the total model parameters.
+
+### [The New Stack: The TeamPCP attacks are a warning: Your CI/CD pipeline is the new front line](https://thenewstack.io/cicd-pipeline-front-line/) — The New Stack
+The article warns that the most scalable attack vector involves hijacking software build and distribution pipelines (CI/CD), citing examples like malicious PyPI payloads. This implies build pipelines must be hardened to treat third-party execution with extreme scrutiny.
