@@ -124,3 +124,15 @@ But how doe the generations actually compare? I would say they are really impres
 I'm really excited that I got prompts and actually everything from the `main.py` decomposed and prompts are now versioned in `prompts.py` witch some metadata, and I've got OpenInference tracing for OLTP sending it off to Phoenix! So I can start doing some more experiment tracking and messing with the prompts, I think this gemma4 model could stand to have some better few shot prompting for my desired outputs, especially since I can greatly increase the context window comapred to qwen3.5:9b.
 
 Very impressed with this model so far, especially considering how good Qwen3.5:9b was but how BAD Qwen3.5:4b was when I tested it for this use case. I'm amazed at how well gemma can follow instructions and I haven't even really messed around with `thinking` or `temperature`!
+
+Oh - something funny though (yes I used em dashes before AI made it cool) I thought I would be slick and use output `format` arg for `ollama.chat()` and it ended up breaking my thing.. it adds markdown for some reason ? 
+```bash
+app-1      | 2026-04-05 01:13:40,782 - INFO - Full Researcher response: ```json
+app-1      | [
+app-1      |     "https://www.theverge.com/tech/907003/apple-approves-driver-that-lets-nvidia-egpus-work-with-arm-macs",
+app-1      |     "https://simonwillison.net/2026/Apr/5/research-llm-apis/#atom-everything"
+app-1      | ]
+    ```
+``` 
+
+Like that's kind of weird but okay. Maybe I will strip it out or maybe I will just not use that because it was outputting JSON just fine just following the prompt...
