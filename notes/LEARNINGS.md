@@ -83,13 +83,13 @@ I think what I really need to do is start tracking each revision of the newslett
 
 Another idea I had is using a more powerful model like Claude periodically to provide feedback on the newsletter.. could be a good judge?
 
-# 3/10/26
+## 3/10/26
 
 Added a local file saving so that the drafts and revisions from the editorial loop are captured for future artifact tracking. 
 
 I updated the prompts a bit so the Editor is better at just responding LGTM and not providining aditional feedback that gets ignored because of how i've constructed the loop. But it seems like it favors just doing one pass since the first iteration from qwen3.5 is actually quite good which I agree on but I wonder if I should add some revision count context awareness to the editor call? Like "this is your n-th revision, the max is k" and have it be more skeptical early on to increase the chance of more revisions?
 
-# 3/12/26
+## 3/12/26
 
 I wonder how much the editor is actually helping here. After setting up file writes for every edit and draft it's funny to see the editor accuse the writer of hallucinating content because it hallucinated that the content is fake, even alluding to how it checked and verified when I have given it no ability to do so just yet ... 
 
@@ -98,3 +98,29 @@ Obiously that's pretty high on my list for the editor to be able to use an MCP t
 Well adding that simple bit of code to fetch hmtl and decomp and parse it with beautifulsoup really worked wonders on some of those feeds. In particular it made HuggingFace blog actually workable because before I was getting barely any content and now it's the featured story of the latest edition! HA.
 
 It's still mucking up the hyperlinks, even worse than before I added some more nudging to the prompt. I think I confused the poor guy. 
+
+## 4/4/26
+
+Gemma 4 is freaking Awesome! I did some evals against Qwen3.5:9b which was my previous guy but the 9b was a bit large on the 8GB 2070 GPU. This made it so I had to run a pretty thin context size but with `gemma4:e4b` the model takes up much less space in vram and I was able to double the KV cache allocation!
+
+### gemma4:e4b
+
+![gemma4:e4b on the homelab](./homelab-gemma4:e4b.png)
+
+As you can see gemma takes up much less memory an taxes the overall system a lot less too, this is thanks to the MoE architecture only activating 4b parameters at a time. It's also noticeably faster! The output with the same prompts is noticeably more concise, this seems reasonable though given it is a MUCH smaller model.
+
+| Metric | gemma4:e4b (15:54) | qwen3.5:9b (16:04) |
+|---|---|---|
+| Total runtime | 3.4 min | 6.8 min |
+| Generation time | 143s | 330s |
+| Gen throughput | 27.5 tok/s | 20.0 tok/s |
+| Prompt eval | 2,042 tok/s | 1,008 tok/s |
+| Completion tokens | 3,945 | 6,612 |
+| Prompt tokens | 40,144 | 43,936 |
+| LLM calls | 16 | 16 |
+
+But how doe the generations actually compare? I would say they are really impressive. I'm willing to swtich away from Qwen3.5. I think this model the way I had it prompted was rubberstamping the 'LGMT' too much. This was in part because Qwen3.5:9b was such a damn good writer the first pass would pretty much hit the ball out of the park.. It did have that occasional struggle with the link hypertext formatting for markdown titles but I adjusted my prompting to mostly fix that. 
+
+I'm really excited that I got prompts and actually everything from the `main.py` decomposed and prompts are now versioned in `prompts.py` witch some metadata, and I've got OpenInference tracing for OLTP sending it off to Phoenix! So I can start doing some more experiment tracking and messing with the prompts, I think this gemma4 model could stand to have some better few shot prompting for my desired outputs, especially since I can greatly increase the context window comapred to qwen3.5:9b.
+
+Very impressed with this model so far, especially considering how good Qwen3.5:9b was but how BAD Qwen3.5:4b was when I tested it for this use case. I'm amazed at how well gemma can follow instructions and I haven't even really messed around with `thinking` or `temperature`!

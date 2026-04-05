@@ -194,7 +194,10 @@ def researcher(raw_articles: dict[str, list]) -> list[dict] | None:
                         interests=INTERESTS, articles=json.dumps(trimmed_for_curation)
                     ),
                     think=False,
-                    format=json,
+                    format="json",
+                )
+                logging.info(
+                    f"Full Researcher response: {response.message.content or ''[:500]}"
                 )
     except Exception as e:
         logging.error(f"Caught Exception: {e}")

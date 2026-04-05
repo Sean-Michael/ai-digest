@@ -27,3 +27,4 @@
     print(settings.db_url)
     ```
 - [ ] Actually do structured output I guess ollama can do this kina like PydanticAI https://docs.ollama.com/capabilities/structured-outputs#python-2
+- [ ] It would be cool on my website to host the drafts and revisions process like behind the scenes from like a selector so you could see the diff .. not sure how that would work with htmx

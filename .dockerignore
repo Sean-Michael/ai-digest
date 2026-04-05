@@ -1,1 +1,14 @@
-.venv
+.git
+__pycache__
+drafts
+digests
+logs
+notes
+tests
+*.pyc
+.gitignore
+.dockerignore
+.python-version
+LICENSE
+README.md
+docker-compose.yaml

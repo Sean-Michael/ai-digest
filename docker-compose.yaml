@@ -7,6 +7,8 @@ services:
     environment:
       - OLLAMA_HOST=http://host.docker.internal:11434
       - OTLP_ENDPOINT=http://phoenix:6006/v1/traces
+    depends_on:
+      - phoenix
   phoenix:
     image: arizephoenix/phoenix:commit-d501db9
     ports:
