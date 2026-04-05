@@ -6,6 +6,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       - OLLAMA_HOST=http://host.docker.internal:11434
+      - OTLP_ENDPOINT=http://phoenix:6006/v1/traces
   phoenix:
     image: arizephoenix/phoenix:commit-d501db9
     ports:
