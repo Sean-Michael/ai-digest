@@ -42,6 +42,7 @@ def chat_with_ollama(
     think: bool = False,
     options=None,
     tools=None,
+    format=None,
 ) -> ChatResponse:
     """Sends a chat to a model with a prompt"""
     with tracer.start_as_current_span("llm.chat") as span:
@@ -58,6 +59,7 @@ def chat_with_ollama(
             think=think,
             options=options or {"num_ctx": NUM_CTX},
             tools=tools,
+            format=format,
         )
 
         # token counts
@@ -192,6 +194,7 @@ def researcher(raw_articles: dict[str, list]) -> list[dict] | None:
                         interests=INTERESTS, articles=json.dumps(trimmed_for_curation)
                     ),
                     think=False,
+                    format=json,
                 )
     except Exception as e:
         logging.error(f"Caught Exception: {e}")
@@ -238,7 +241,7 @@ def writer(
                     feedback=feedback,
                     draft=previous_draft,
                 ),
-                think=False,
+                think=True,
             )
     newsletter = response.message.content
     logging.info("Writer generated draft.")
@@ -258,7 +261,7 @@ def editor(draft: str) -> str | None:
                 EDITOR_MODEL,
                 EDITOR_SYSTEM_PROMPT.template,
                 EDITOR_USER_PROMPT.render(date_str=DATE_STR, draft=draft),
-                think=False,
+                think=True,
             )
     feedback = response.message.content
     logging.info("Editor generated feedback.")
