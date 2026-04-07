@@ -121,8 +121,9 @@ def get_recent_entry(name: str, url: str, entry: dict):
             return entry
 
 
-def parse_rss_feed(results: list, name: str, url: str):
+def parse_rss_feed(name: str, url: str):
     """Uses feedparser.parse() to parse a dict out of an RSS feed from URL"""
+    articles = []
     try:
         feed = feedparser.parse(url)
         if not feed.entries:
@@ -130,12 +131,13 @@ def parse_rss_feed(results: list, name: str, url: str):
         for entry in feed.entries:
             recent_entry = get_recent_entry(name, url, entry)
             if recent_entry:
-                results.append(recent_entry)
-        new_entries = [e for e in results if e.get("source_feed") == name]
-        logging.debug(f"Got {len(new_entries)} recent entries for {name}")
+                articles.append(recent_entry)
+        logging.debug(f"Got {len(articles)} recent entries for {name}")
+        return articles
 
     except Exception as e:
         logging.error(f"Caught exception parsing url {url} {e}")
+        return None
 
 
 def ingest_rss_feeds() -> list[dict]:
@@ -143,13 +145,19 @@ def ingest_rss_feeds() -> list[dict]:
     feeds = None
     with open("feeds.json", "r") as json_file:
         feeds = json.load(json_file)
-    results = []
+    articles = []
 
     start = perf_counter()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [
+            executor.submit(parse_rss_feed, name, url) for name, url in feeds.items()
+        ]
 
-    for name, url in feeds.items():
-        parse_rss_feed(results, name, url)
+        for future in concurrent.futures.as_completed(futures):
+            parsed = future.result()
+            if parsed:
+                articles.extend(parsed)
 
     end = perf_counter()
     logging.debug(f"RSS parser finished in {end - start}s")
-    return results
+    return articles
