@@ -14,8 +14,6 @@ from time import mktime, perf_counter
 from config import TIMEFRAME_HOURS
 import json
 
-current_utc_time = datetime.now(UTC)
-
 
 def fetch_article(url: str) -> str | None:
     """Requests a page from URL via HTTP"""
@@ -103,31 +101,46 @@ def parse_article(response: Response) -> str | None:
         return text
 
 
-def ingest_rss_feeds() -> dict:
+def ingest_rss_feeds() -> list[dict]:
     """Parse RSS feeds and return dictionary of information"""
-    """TODO: Add some try/except timeout/rate limit handling"""
     feeds = None
     with open("feeds.json", "r") as json_file:
         feeds = json.load(json_file)
-    results = {}
+    results = []
 
     start = perf_counter()
     for name, url in feeds.items():
-        results[name] = []
-        feed = feedparser.parse(url)
-        if not feed.entries:
-            logging.warning(f"No entries from feed: {name} ({url})")
-        for entry in feed.entries:
-            date = entry.get("published_parsed", None) or entry.get(
-                "updated_parsed", None
-            )
-            if date:
-                timestamp = mktime(date)  # type: ignore[arg-type]
-                datetime_obj = datetime.fromtimestamp(timestamp, UTC)
-                if datetime_obj > current_utc_time - timedelta(hours=TIMEFRAME_HOURS):
-                    results[name].append(entry)
-        if results.get(name, []):
-            logging.debug(f"Got {len(results.get(name, ''))} recent entries for {name}")
+        try:
+            feed = feedparser.parse(url)
+            if not feed.entries:
+                logging.warning(f"No entries from feed: {name} ({url})")
+            for entry in feed.entries:
+                # Some feeds use published, others updated, we check both regardless.
+                date = entry.get("published_parsed", None) or entry.get(
+                    "updated_parsed", None
+                )
+                if date:
+                    # Get a datetime object from the date we parsed.
+                    timestamp = mktime(date)  # type: ignore[arg-type]
+                    published_datetime_obj = datetime.fromtimestamp(timestamp, UTC)
+
+                    # Get a datetime object for the current UTC time
+                    current_utc_time = datetime.now(UTC)
+
+                    # If the published time is after current time minus the timeframe window, save it
+                    if published_datetime_obj > current_utc_time - timedelta(
+                        hours=TIMEFRAME_HOURS
+                    ):
+                        # Add our source name and url to the dict
+                        entry.update({"source_feed": name, "source_url": url})
+                        results.append(entry)
+
+            new_entries = [e for e in results if e.get("source_feed") == name]
+            logging.debug(f"Got {len(new_entries)} recent entries for {name}")
+
+        except Exception as e:
+            logging.error(f"Caugh exception parsing url {url} {e}")
+
     end = perf_counter()
     logging.debug(f"RSS parser finished in {end - start}s")
     return results
