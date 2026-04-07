@@ -13,6 +13,7 @@ from datetime import datetime, timedelta, UTC
 from time import mktime, perf_counter
 from config import TIMEFRAME_HOURS
 import json
+import concurrent.futures
 
 
 def fetch_article(url: str) -> str | None:
@@ -101,7 +102,7 @@ def parse_article(response: Response) -> str | None:
         return text
 
 
-def parse_entry(name: str, url: str, entry: dict):
+def get_recent_entry(name: str, url: str, entry: dict):
     """Parse a single entry dict if it's recent enough and return the dict"""
     # Some feeds use published, others updated, we check both regardless.
     date = entry.get("published_parsed", None) or entry.get("updated_parsed", None)
@@ -120,6 +121,23 @@ def parse_entry(name: str, url: str, entry: dict):
             return entry
 
 
+def parse_rss_feed(results: list, name: str, url: str):
+    """Uses feedparser.parse() to parse a dict out of an RSS feed from URL"""
+    try:
+        feed = feedparser.parse(url)
+        if not feed.entries:
+            logging.warning(f"No entries from feed: {name} ({url})")
+        for entry in feed.entries:
+            recent_entry = get_recent_entry(name, url, entry)
+            if recent_entry:
+                results.append(recent_entry)
+        new_entries = [e for e in results if e.get("source_feed") == name]
+        logging.debug(f"Got {len(new_entries)} recent entries for {name}")
+
+    except Exception as e:
+        logging.error(f"Caught exception parsing url {url} {e}")
+
+
 def ingest_rss_feeds() -> list[dict]:
     """Parse RSS feeds and return list of FeedParserDict"""
     feeds = None
@@ -128,20 +146,9 @@ def ingest_rss_feeds() -> list[dict]:
     results = []
 
     start = perf_counter()
-    for name, url in feeds.items():
-        try:
-            feed = feedparser.parse(url)
-            if not feed.entries:
-                logging.warning(f"No entries from feed: {name} ({url})")
-            for entry in feed.entries:
-                parsed_entry = parse_entry(name, url, entry)
-                if parsed_entry:
-                    results.append(parsed_entry)
-            new_entries = [e for e in results if e.get("source_feed") == name]
-            logging.debug(f"Got {len(new_entries)} recent entries for {name}")
 
-        except Exception as e:
-            logging.error(f"Caught exception parsing url {url} {e}")
+    for name, url in feeds.items():
+        parse_rss_feed(results, name, url)
 
     end = perf_counter()
     logging.debug(f"RSS parser finished in {end - start}s")
