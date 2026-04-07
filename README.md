@@ -66,7 +66,7 @@ All of this lands in Arize Phoenix at `localhost:6006`.
 | | |
 |---|---|
 | Runtime | Python 3.13, uv |
-| LLM | Ollama (currently `gpt-oss:20b`, have also run `qwen3.5:9b`) |
+| LLM | Ollama (currently `gemma4:e4b`) |
 | Feeds | feedparser, BeautifulSoup for content enrichment |
 | Observability | OpenTelemetry → Arize Phoenix (token counts, latencies, prompts) |
 | Publishing | boto3 (S3), markdown with YAML frontmatter |
@@ -78,13 +78,10 @@ All in `config.py` — models, context window, revision limits, interests list, 
 
 | Variable | Default | |
 |---|---|---|
-| `RESEARCHER_MODEL` / `WRITER_MODEL` / `EDITOR_MODEL` | `gpt-oss:20b` | Ollama model for each agent |
-| `NUM_CTX` | `32768` | Context window size (big impact on quality) |
+| `RESEARCHER_MODEL` / `WRITER_MODEL` / `EDITOR_MODEL` | `gemma4:e4b` | Ollama model for each agent |
+| `NUM_CTX` | `65536` | Context window size  |
 | `MAX_REVISIONS` | `3` | Editorial loop cap |
 | `TIMEFRAME_HOURS` | `24` | How far back to look for articles |
-| `PUBLISH` | `False` | Upload final digest to S3 |
-| `S3_CONTENT_BUCKET` | env: `smr-webdev-content` | S3 bucket for publishing |
-| `AWS_REGION` | env: `us-west-2` | AWS region |
 
 ## Feeds
 
