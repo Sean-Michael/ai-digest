@@ -121,43 +121,22 @@ def summarize_article(article: dict):
     return summarized
 
 
-def researcher(raw_articles: dict[str, list]) -> list[dict] | None:
+def researcher(raw_articles: list[dict]) -> list[dict] | None:
     """Researcher Agent, refines article results into best candidates and summarizes"""
     logging.info(
-        f"Ingested {sum(len(v) for v in raw_articles.values())} total articles from {len(raw_articles)} feeds"
+        f"Ingested {len(raw_articles)} total articles from {len(set(a.get('source_feed') for a in raw_articles))} feeds"
     )
-    trimmed = [
-        {
-            "source": source,
-            "title": entry.get("title", "NO TITLE"),
-            "summary": entry.get("summary", "NO SUMMARY"),
-            "content": (
-                entry.get("content", [{}])[0].get("value", "")
-                or entry.get("summary", "NO CONTENT")
-            )[:3000],
-            "link": entry.get("link", "NO LINK"),
-        }
-        for source, entries in raw_articles.items()
-        for entry in entries
-    ]
 
-    thin_articles = [
-        a
-        for a in trimmed
-        if (len(a.get("content", "")) < 200 or "NO CONTENT" in a.get("content", ""))
-    ]
-
+    # Fetch each article's content scraped by BeautifulSoup
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future_to_article = {
-            executor.submit(fetch_article, a.get("link", "")): a for a in thin_articles
+            executor.submit(fetch_article, a.get("link", "")): a for a in raw_articles
         }
 
         for future in concurrent.futures.as_completed(future_to_article):
             try:
                 a = future_to_article[future]
-                logging.info(
-                    f"RSS got no content for '{a.get('title', 'unknown')}', fetching article"
-                )
+                logging.info(f"Fetching article '{a.get('title', 'unknown')}'")
                 a["content"] = future.result() or "NO CONTENT"
                 logging.debug(f"Fetched content length: {len(a['content'])}")
                 if a["content"] == "NO CONTENT":
@@ -169,8 +148,27 @@ def researcher(raw_articles: dict[str, list]) -> list[dict] | None:
             except Exception as e:
                 logging.error(f"Exception caught in task future: {e}")
 
+    # Trim out just the fields we care about dict, with some type guards
+    trimmed = [
+        {
+            "source": entry.get("source_feed"),
+            "title": entry.get("title", "NO TITLE"),
+            "summary": entry.get("summary", "NO SUMMARY"),
+            "content": (entry.get("content", None)),
+            "link": entry.get("link", "NO LINK"),
+        }
+        for entry in raw_articles
+        if entry.get("content")
+    ]
+
+    # Generate summaries from the fetched content for each article.
+    summarized_articles = [summarize_article(a) for a in trimmed]
+    logging.info(f"Researcher summarized {len(summarized_articles)} articles")
+
+    # Trim the necessary fields for curation
     trimmed_for_curation = [
-        {k: a[k] for k in ("source", "title", "summary", "link")} for a in trimmed
+        {k: a[k] for k in ("source", "title", "summary", "link")}
+        for a in summarized_articles
     ]
 
     try:
@@ -204,14 +202,12 @@ def researcher(raw_articles: dict[str, list]) -> list[dict] | None:
         curated_links = list(set(json.loads(response.message.content or "[]")))
         logging.info(f"Researcher selected {len(curated_links)} unique links")
         logging.debug(f"researcher links: {curated_links}")
-        curated_articles = [a for a in trimmed if a.get("link") in curated_links]
+        curated_articles = [
+            a for a in summarized_articles if a.get("link") in curated_links
+        ]
         logging.debug(f"curated_articles: {curated_articles}")
         logging.info(f"Researcher curated {len(curated_articles)} articles")
-
-        summarized_articles = [summarize_article(a) for a in curated_articles]
-        logging.info(f"Researcher summarized {len(summarized_articles)} articles")
-        logging.info(f"Article sources: {[a['source'] for a in summarized_articles]}")
-        return summarized_articles
+        return curated_articles
     except Exception as e:
         logging.error(f"Caught exception: {e}")
         return None

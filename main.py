@@ -9,6 +9,7 @@ import logging
 import uuid
 from datetime import datetime, UTC
 from time import perf_counter
+import json
 import os
 from ingest import ingest_rss_feeds
 from publisher import write_newsletter
@@ -64,6 +65,14 @@ def setup() -> None:
         trace_api.set_tracer_provider(tracer_provider)
 
 
+def save_articles_json(articles):
+    """TODO: Saves article dicts as Json objects in Postgres"""
+    for a in articles:
+        json_string = json.dumps(a.items())
+        logging.debug(f"{json_string}")
+    return
+
+
 def main():
     """Main execution loop"""
 
@@ -78,6 +87,7 @@ def main():
         feedback = ""
         revisions = 0
         raw_articles = ingest_rss_feeds()
+        save_articles_json(raw_articles)
         curated_articles = researcher(raw_articles)
 
         if not curated_articles:
