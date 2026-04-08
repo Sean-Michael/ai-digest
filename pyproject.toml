@@ -13,8 +13,9 @@ dependencies = [
     "openinference-instrumentation>=0.1.46",
     "opentelemetry-exporter-otlp-proto-http>=1.40.0",
     "opentelemetry-sdk>=1.40.0",
-    "psycopg>=3.3.3",
+    "psycopg[binary,pool]>=3.3.3",
     "pytest>=9.0.2",
+    "python-dotenv>=1.2.2",
     "python-json-logger>=4.0.0",
     "requests>=2.32.5",
 ]
