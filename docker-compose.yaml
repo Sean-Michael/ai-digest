@@ -5,12 +5,27 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      - OLLAMA_HOST=http://host.docker.internal:11434
-      - OTLP_ENDPOINT=http://phoenix:6006/v1/traces
+      - OLLAMA_HOST=4{OLLAMA_HOST:-http://host.docker.internal:11434}
+      - OTLP_ENDPOINT=${OTLP_ENDPOINT:-http://phoenix:6006/v1/traces}
+      - DB_ENDPOINT=${DB_ENDPOINT:-db:5432}
+
     depends_on:
       - phoenix
+      - db
   phoenix:
     image: arizephoenix/phoenix:commit-d501db9
+    restart: always
     ports:
       - "6006:6006"
       - "4317:4317"
+  db:
+    image: postgres:${PG_TAG}
+    restart: always
+    environment:
+      - POSTGRES_USER=${PG_USER:-postgres}
+      - POSTGRES_PASSWORD=${PG_PASSWORD}
+      - POSTGRES_DB=${PG_DB:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
