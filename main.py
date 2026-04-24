@@ -87,7 +87,7 @@ def create_articles_table():
     columns = {
         "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
         "source": "varchar(255)",
-        "title": "varchar(255) FOREIGN KEY",
+        "title": "varchar(255)",
         "summary": "varchar(255)",
         "link": "varchar(255)",
     }
