@@ -1,6 +1,5 @@
 import psycopg
 from psycopg_pool import ConnectionPool
-from psycopg.types.json import Jsonb
 from psycopg import sql
 import logging
 from dotenv import load_dotenv
@@ -10,6 +9,8 @@ logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(mes
 
 logging.getLogger("psycopg").setLevel(logging.DEBUG)
 logging.getLogger("psycopg.pool").setLevel(logging.INFO)
+
+load_dotenv()
 
 
 def create_connection_pool(
