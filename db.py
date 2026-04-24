@@ -60,20 +60,31 @@ def create_table(table: str, cols: dict[str, str]):
         conn.execute(query)
 
 
-def insert_articles(table: str, col: str, articles: list[dict]):
+def insert_articles(table: str, articles: list[dict] | None):
     """Saves articles as Jsonb"""
     if pool is None:
         raise RuntimeError("Pool not initialized")
 
-    query = sql.SQL("INSERT INTO {table} ({col}) VALUES (%s)").format(
-        table=sql.Identifier(table), col=sql.Identifier(col)
-    )
+    if articles is None:
+        raise RuntimeError("Got no articles")
+
+    query = "INSERT INTO (table) (source, title, summary, link) VALUES (%(source)s, %(title)s, %(summary)s, %(link)s)"
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.executemany(query, [(Jsonb(a),) for a in articles])
+            cur.executemany(query, [a for a in articles])
 
 
+"""
+TODO: come up with a better way to do this
+    - import time db initialization is ok
+    - means I can do `from db import pool` in any module
+    - don't have to pass around a 'pool' object
+    - don't have to create a global in main
+    it just feels kind of janky
+    actually this kind of makes it so I never have to mention pool in other modules
+    maybe it's ok?
+"""
 postgres_user = os.getenv("PG_USER", "postgres")
 postgres_db = os.getenv("DB_NAME", "postgres")
 postgres_host = os.getenv("DB_HOST", "localhost")

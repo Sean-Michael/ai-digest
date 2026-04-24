@@ -11,6 +11,8 @@ from datetime import datetime, UTC
 from time import perf_counter
 import json
 import os
+
+# Local project modules
 from ingest import ingest_rss_feeds
 from publisher import write_newsletter
 from config import (
@@ -27,6 +29,9 @@ from config import (
     ENABLE_TRACING,
 )
 from agents import researcher, writer, editor
+from db import create_table, insert_articles
+
+# OpenTelemetry SDK Resources
 from opentelemetry import trace as trace_api
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.resources import Resource
@@ -35,7 +40,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from openinference.instrumentation import using_session
 
 
-def setup() -> None:
+def setup():
     # Setup logging
     os.makedirs(LOG_DIR / DATE_STR, exist_ok=True)
     file_handler = logging.FileHandler(LOG_FILE, mode="a")
@@ -65,12 +70,27 @@ def setup() -> None:
         trace_api.set_tracer_provider(tracer_provider)
 
 
-def save_articles_json(articles):
+def save_articles_json(articles: list[dict]):
     """TODO: Saves article dicts as Json objects in Postgres"""
     for a in articles:
         json_string = json.dumps(a.items())
         logging.debug(f"{json_string}")
     return
+
+
+def create_articles_table():
+    """Calls"""
+    columns = {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "source": "varchar(255)",
+        "title": "varchar(255) FOREIGN KEY",
+        "summary": "varchar(255)",
+        "link": "varchar(255)",
+    }
+    try:
+        create_table("articles", columns)
+    except Exception as e:
+        logging.error(f"Error creating articles table: {e}")
 
 
 def main():
@@ -86,9 +106,9 @@ def main():
         draft = ""
         feedback = ""
         revisions = 0
-        raw_articles = ingest_rss_feeds()
-        # save_articles_json(raw_articles)
-        curated_articles = researcher(raw_articles)
+        articles = ingest_rss_feeds()
+        curated_articles = researcher(articles)
+        insert_articles("articles", curated_articles)
 
         if not curated_articles:
             logging.error(
@@ -142,6 +162,7 @@ def main():
         else:
             logging.error(f"Failed to write, no final or draft, final:{final}")
             exit(1)
+
         end_main = perf_counter()
         logging.info(f"Finished main execution in {end_main - start_main}s")
         exit(0)
