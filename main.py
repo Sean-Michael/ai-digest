@@ -41,6 +41,7 @@ from openinference.instrumentation import using_session
 
 
 def setup():
+    """Set up the prerequisites like logging, dirs for artifacts, and db"""
     # Setup logging
     os.makedirs(LOG_DIR / DATE_STR, exist_ok=True)
     file_handler = logging.FileHandler(LOG_FILE, mode="a")
@@ -69,6 +70,9 @@ def setup():
         tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
         trace_api.set_tracer_provider(tracer_provider)
 
+    # Setup the database
+    create_articles_table()
+
 
 def save_articles_json(articles: list[dict]):
     """TODO: Saves article dicts as Json objects in Postgres"""
@@ -89,8 +93,10 @@ def create_articles_table():
     }
     try:
         create_table("articles", columns)
+        logging.info("Table: 'articles' created")
     except Exception as e:
         logging.error(f"Error creating articles table: {e}")
+        raise
 
 
 def main():
