@@ -16,7 +16,6 @@ from bs4 import BeautifulSoup
 from requests import RequestException, Response
 
 from config import TIMEFRAME_HOURS
-from db import fetch_existing_articles
 
 
 def fetch_article(url: str) -> str | None:
@@ -124,14 +123,6 @@ def get_recent_entry(name: str, url: str, entry: dict):
             return entry
 
 
-def filter_seen(articles: list[dict]) -> list[dict]:
-    existing_articles = fetch_existing_articles("articles", articles)
-    new_articles = [
-        a for a in articles if (a.get("title"), a.get("link")) not in existing_articles
-    ]
-    return new_articles
-
-
 def parse_rss_feed(name: str, url: str) -> list[dict] | None:
     """Uses feedparser.parse() to parse a dict out of an RSS feed from URL"""
     articles = []
@@ -144,7 +135,7 @@ def parse_rss_feed(name: str, url: str) -> list[dict] | None:
             if recent_entry:
                 articles.append(recent_entry)
         logging.debug(f"Got {len(articles)} recent entries for {name}")
-        return filter_seen(articles)
+        return articles
 
     except Exception as e:
         logging.error(f"Caught exception parsing url {url} {e}")

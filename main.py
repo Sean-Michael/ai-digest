@@ -36,7 +36,7 @@ from config import (
     console_format,
     json_formatter,
 )
-from db import create_table, insert_articles
+from db import create_table, fetch_existing_articles, insert_articles
 
 # Local project modules
 from ingest import ingest_rss_feeds
@@ -79,7 +79,7 @@ def setup():
 
 
 def create_articles_table():
-    """Calls"""
+    """Calls the db to create the articles table"""
     columns = {
         "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
         "source": "text",
@@ -93,6 +93,14 @@ def create_articles_table():
     except Exception as e:
         logging.error(f"Error creating articles table: {e}")
         raise
+
+
+def filter_seen(articles: list[dict], existing: set[tuple[str, str]]) -> list[dict]:
+    """Dedup the articles from those already in the database."""
+    new_articles = [
+        a for a in articles if (a.get("title"), a.get("link")) not in existing
+    ]
+    return new_articles
 
 
 def main():
@@ -109,6 +117,9 @@ def main():
         feedback = ""
         revisions = 0
         articles = ingest_rss_feeds()
+        if ENABLE_DB:
+            existing = fetch_existing_articles("articles", articles)
+            articles = filter_seen(articles, existing)
         curated_articles = researcher(articles)
 
         if not curated_articles:
@@ -120,7 +131,8 @@ def main():
             f"Passing {len(curated_articles)} articles to writer: {[a['source'] + ' - ' + a['title'][:40] for a in curated_articles]}"
         )
 
-        insert_articles("articles", curated_articles)
+        if ENABLE_DB:
+            insert_articles("articles", curated_articles)
 
         while not ready_to_publish and revisions < MAX_REVISIONS:
             start_revision = perf_counter()
