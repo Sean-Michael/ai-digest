@@ -1,0 +1,5 @@
+Ensure every story uses the required markdown hyperlink format: enclosing the link text in square brackets [] and immediately following it with the URL in parentheses ().
+
+Review all Quick Hits for generic phrasing. Replace summary introductions like "This article details" or "This paper analyzed" with direct reporting of the core finding.
+
+Verify that all stories have associated URLs to complete the markdown linking requirement.

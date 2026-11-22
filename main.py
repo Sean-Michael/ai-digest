@@ -5,39 +5,42 @@ Description: Agentic AI workflow for gathering RSS feed based content into a new
 Version: v1.0.2
 """
 
-import logging
-import uuid
-from datetime import datetime, UTC
-from time import perf_counter
 import json
+import logging
 import os
+import uuid
+from datetime import UTC, datetime
+from time import perf_counter
 
-# Local project modules
-from ingest import ingest_rss_feeds
-from publisher import write_newsletter
+from openinference.instrumentation import using_session
+
+# OpenTelemetry SDK Resources
+from opentelemetry import trace as trace_api
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk import trace as trace_sdk
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+
+from agents import editor, researcher, writer
 from config import (
     DATE_STR,
     DIGEST_DIR,
     DRAFT_DIR,
+    ENABLE_DB,
+    ENABLE_TRACING,
     LOG_DIR,
     LOG_FILE,
+    LOG_LEVEL,
     MAX_REVISIONS,
+    OTLP_ENDPOINT,
     console_format,
     json_formatter,
-    LOG_LEVEL,
-    OTLP_ENDPOINT,
-    ENABLE_TRACING,
 )
-from agents import researcher, writer, editor
 from db import create_table, insert_articles
 
-# OpenTelemetry SDK Resources
-from opentelemetry import trace as trace_api
-from opentelemetry.sdk import trace as trace_sdk
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from openinference.instrumentation import using_session
+# Local project modules
+from ingest import ingest_rss_feeds
+from publisher import write_newsletter
 
 
 def setup():
@@ -71,25 +74,18 @@ def setup():
         trace_api.set_tracer_provider(tracer_provider)
 
     # Setup the database
-    create_articles_table()
-
-
-def save_articles_json(articles: list[dict]):
-    """TODO: Saves article dicts as Json objects in Postgres"""
-    for a in articles:
-        json_string = json.dumps(a.items())
-        logging.debug(f"{json_string}")
-    return
+    if ENABLE_DB:
+        create_articles_table()
 
 
 def create_articles_table():
     """Calls"""
     columns = {
         "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
-        "source": "varchar(255)",
-        "title": "varchar(255)",
-        "summary": "varchar(255)",
-        "link": "varchar(255)",
+        "source": "text",
+        "title": "text",
+        "summary": "text",
+        "link": "text",
     }
     try:
         create_table("articles", columns)
@@ -114,7 +110,6 @@ def main():
         revisions = 0
         articles = ingest_rss_feeds()
         curated_articles = researcher(articles)
-        insert_articles("articles", curated_articles)
 
         if not curated_articles:
             logging.error(
@@ -124,6 +119,8 @@ def main():
         logging.info(
             f"Passing {len(curated_articles)} articles to writer: {[a['source'] + ' - ' + a['title'][:40] for a in curated_articles]}"
         )
+
+        insert_articles("articles", curated_articles)
 
         while not ready_to_publish and revisions < MAX_REVISIONS:
             start_revision = perf_counter()

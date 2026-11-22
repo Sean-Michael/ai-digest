@@ -37,10 +37,10 @@ All prompts live in `prompts.py` as Pydantic `BaseModel` instances:
 
 ```python
 class Prompt(BaseModel):
-    agent: str        # which agent owns this prompt
+    agent: str  # which agent owns this prompt
     prompt_type: str  # "system" or "user"
-    template: str     # python string.Template syntax ($var)
-    version: str      # semver, e.g. "v1.0.0"
+    template: str  # python string.Template syntax ($var)
+    version: str  # semver, e.g. "v1.0.0"
 
     def render(self, **kwargs) -> str:
         return Template(self.template).substitute(**kwargs)
@@ -110,6 +110,43 @@ uv run main.py
 ```
 
 Phoenix UI is at `http://localhost:6006` — you can see every LLM call, token counts, and latencies there.
+
+## Postgres
+
+I've setup a postgresql database, also in the docker-compose, to run it standalone:
+
+```bash
+docker compose up -d db
+```
+
+And connect to the database with `pgcli`
+
+```bash
+pgcli -h localhost -p 5432 -U postgres -d postgres
+```
+
+Some example commands for inspecting the schema:
+
+• `\dt` — List tables (\dt+ for sizes and descriptions)
+• `\d <table>` — Describe table columns, types, indexes, and constraints
+• `\dn` — List schemas
+• `\du` — List roles/users
+• `\dx` — List installed extensions
+
+```bash
+postgres@localhost:postgres> \d articles
++---------+------------------------+-------------------------------------+
+| Column  | Type                   | Modifiers                           |
+|---------+------------------------+-------------------------------------|
+| id      | uuid                   |  not null default gen_random_uuid() |
+| source  | character varying(255) |                                     |
+| title   | character varying(255) |                                     |
+| summary | character varying(255) |                                     |
+| link    | character varying(255) |                                     |
++---------+------------------------+-------------------------------------+
+Indexes:
+    "articles_pkey" PRIMARY KEY, btree (id)
+```
 
 ### Docker + Ollama
 

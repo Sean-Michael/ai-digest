@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Mock RSS Feed 1</title>
+    <link>http://example.com/mock-rss-1</link>
+    <description>This is a mock RSS feed for development purposes.</description>
+    <language>en-us</language>
+    <pubDate>Thu, 01 Jan 2022 00:00:00 GMT</pubDate>
+    <item>
+      <title>Global Climate Summit Reaches Historic Agreement</title>
+      <link>http://example.com/item1</link>
+      <description>World leaders have agreed on unprecedented measures to combat climate change after two weeks of intense negotiations.</description>
+      <pubDate>Thu, 01 Jan 2022 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Technology Giant Unveils Revolutionary AI Assistant</title>
+      <link>http://example.com/item2</link>
+      <description>The new artificial intelligence system can understand and respond to complex human emotions with remarkable accuracy.</description>
+      <pubDate>Wed, 31 Dec 2021 23:59:59 GMT</pubDate>
+    </item>
+    <item>
+      <title>Global Climate Summit Reaches Historic Agreement</title>
+      <link>http://news.example.com/item1</link>
+      <description>World leaders have agreed on unprecedented measures to combat climate change after two weeks of intense negotiations.</description>
+      <pubDate>Fri, 02 Jan 2022 10:30:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>New Breakthrough in Cancer Research Announced</title>
+      <link>http://example.com/item4</link>
+      <description>Scientists have discovered a new treatment that shows promising results in early-stage clinical trials.</description>
+      <pubDate>Mon, 29 Dec 2021 23:59:59 GMT</pubDate>
+    </item>
+    <item>
+      <title>Major Financial Institution Reports Record Profits</title>
+      <link>http://example.com/item5</link>
+      <description>The bank's quarterly earnings exceeded expectations, driven by strong performance in digital banking services.</description>
+      <pubDate>Sun, 28 Dec 2021 23:59:59 GMT</pubDate>
+    </item>
+    <item>
+      <title>Global Climate Summit Reaches Historic Agreement</title>
+      <link>http://worldnews.example.com/item1</link>
+      <description>World leaders have agreed on unprecedented measures to combat climate change after two weeks of intense negotiations.</description>
+      <pubDate>Tue, 04 Jan 2022 15:45:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Technology Giant Unveils Revolutionary AI Assistant</title>
+      <link>http://technews.example.com/item2</link>
+      <description>The new artificial intelligence system can understand and respond to complex human emotions with remarkable accuracy.</description>
+      <pubDate>Wed, 05 Jan 2022 09:15:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Major Financial Institution Reports Record Profits</title>
+      <link>http://finance.example.com/item5</link>
+      <description>The bank's quarterly earnings exceeded expectations, driven by strong performance in digital banking services.</description>
+      <pubDate>Thu, 06 Jan 2022 14:20:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>New Breakthrough in Cancer Research Announced</title>
+      <link>http://medicalnews.example.com/item4</link>
+      <description>Scientists have discovered a new treatment that shows promising results in early-stage clinical trials.</description>
+      <pubDate>Fri, 07 Jan 2022 11:30:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>International Space Station Celebrates 25 Years of Continuous Human Presence</title>
+      <link>http://example.com/item10</link>
+      <description>The orbital laboratory has been continuously inhabited by astronauts for a quarter century, advancing our understanding of space.</description>
+      <pubDate>Sat, 08 Jan 2022 08:45:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

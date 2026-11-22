@@ -4,8 +4,9 @@ Author: Sean-Michael Riesterer
 Description: Versioned prompt templates with render fucntion and pydantic models.
 """
 
-from pydantic import BaseModel
 from string import Template
+
+from pydantic import BaseModel
 
 
 class Prompt(BaseModel):
@@ -56,8 +57,8 @@ SUMMARY_SYSTEM_PROMPT = Prompt(
     agent="researcher",
     prompt_type="system",
     version="v1.0.0",
-    template="""You are a research assistant summarizing articles for a senior DevOps engineer 
-    interested in AI and MLOps. They build on Kubernetes, work with self-hosted LLMs, 
+    template="""You are a research assistant summarizing articles for a senior software engineer 
+    interested in AI training and MLOps. They build on Kubernetes, work with self-hosted LLMs, 
     and care about practical tooling. Summarize only what is in the article. 
     If the content is thin, say so briefly.
     """,
@@ -81,8 +82,8 @@ WRITER_SYSTEM_PROMPT = Prompt(
     prompt_type="system",
     version="v1.0.0",
     template="""
-        You are writing a personal knowledge digest for a senior DevOps engineer 
-        interested in AI and MLOps. Write like a knowledgeable colleague sharing 
+        You are writing a personal knowledge digest for a senior software engineer 
+        interested in AI training and MLOps. Write like a knowledgeable colleague sharing 
         what they learned today, not a marketer. Be specific and technical.
 
         The editor will provide feedback, if given follow it exactly and update your previous draft.

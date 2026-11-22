@@ -1,9 +1,11 @@
-import psycopg
-from psycopg_pool import ConnectionPool
-from psycopg import sql
 import logging
-from dotenv import load_dotenv
 import os
+import sys
+
+import psycopg
+from dotenv import load_dotenv
+from psycopg import sql
+from psycopg_pool import ConnectionPool
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -62,18 +64,19 @@ def create_table(table: str, cols: dict[str, str]):
 
 
 def insert_articles(table: str, articles: list[dict] | None):
-    """Saves articles as Jsonb"""
+    """Bulk insert `articles` into `table`"""
     if pool is None:
         raise RuntimeError("Pool not initialized")
 
     if articles is None:
         raise RuntimeError("Got no articles")
 
-    query = "INSERT INTO (table) (source, title, summary, link) VALUES (%(source)s, %(title)s, %(summary)s, %(link)s)"
+    query = sql.SQL(
+        "INSERT INTO {table} (source, title, summary, link) VALUES (%(source)s, %(title)s, %(summary)s, %(link)s)"
+    ).format(table=sql.Identifier(table))
 
-    with pool.connection() as conn:
-        with conn.cursor() as cur:
-            cur.executemany(query, [a for a in articles])
+    with pool.connection() as conn, conn.cursor() as cur:
+        cur.executemany(query, articles)
 
 
 """
@@ -96,14 +99,13 @@ pool = create_connection_pool(
 )
 
 if pool is None:
-    exit(1)
+    sys.exit(1)
 
 if __name__ == "__main__":
     load_dotenv()
 
-    with pool.connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT version()")
-            for row in cur:
-                print(row)
+    with pool.connection() as conn, conn.cursor() as cur:
+        cur.execute("SELECT version()")
+        for row in cur:
+            print(row)
     pool.close()

@@ -4,16 +4,20 @@ Author: Sean-Michael Riesterer
 Description: Functions to gather articles from RSS Feeds and parse content with bs4
 """
 
-import logging
-import requests
-from requests import RequestException, Response
-from bs4 import BeautifulSoup
-import feedparser
-from datetime import datetime, timedelta, UTC
-from time import mktime, perf_counter
-from config import TIMEFRAME_HOURS
-import json
 import concurrent.futures
+import json
+import logging
+from datetime import UTC, datetime, timedelta
+from time import mktime, perf_counter
+
+import feedparser
+import requests
+from bs4 import BeautifulSoup
+from requests import RequestException, Response
+
+from config import TIMEFRAME_HOURS
+
+TEST = True
 
 
 def fetch_article(url: str) -> str | None:
@@ -163,7 +167,16 @@ def ingest_rss_feeds() -> list[dict]:
     return articles
 
 
+def ingest_dummy_rss_feeds() -> list[dict]:
+    """Parse the dummy local rss feed adn return list of FeedParserDict"""
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future = [executor.submit()]
+
+
 if __name__ == "__main__":
     """Local main guard in case of running standalone"""
     logging.basicConfig(level="DEBUG")
-    ingest_rss_feeds()
+    if not TEST:
+        ingest_rss_feeds()
+    else:
+        ingest_dummy_rss_feeds()

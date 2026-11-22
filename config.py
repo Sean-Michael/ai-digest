@@ -5,16 +5,18 @@ Description: Global configurations definitions
 """
 
 import logging
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from pathlib import Path
-from pythonjsonlogger.json import JsonFormatter
 import os
+from datetime import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+from pythonjsonlogger.json import JsonFormatter
 
 OTLP_ENDPOINT = os.getenv("OTLP_ENDPOINT", "http://localhost:6006/v1/traces")
 # Boolean to control wether or not the generated digest is 'published' by uploading to s3
 PUBLISH = False
-ENABLE_TRACING = True
+ENABLE_TRACING = False
+ENABLE_DB = True
 
 DATE_STR = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
 
@@ -37,6 +39,8 @@ INTERESTS = [
     "ML",
     "MLOps",
     "LLMOps",
+    "RL",
+    "Reinforcement Learning",
     "Platform Engineering",
     "AI Engineering",
     "DevOps",

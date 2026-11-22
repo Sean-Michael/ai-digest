@@ -4,33 +4,35 @@ Author: Sean-Michael Riesterer
 Description: Functions for LLM agent operations
 """
 
-from requests import RequestException
 import concurrent.futures
 import json
-import re
-from ollama import chat, ChatResponse
 import logging
-from ingest import fetch_article
+import re
+
+from ollama import ChatResponse, chat
+from openinference.instrumentation import using_prompt_template
+from opentelemetry import trace
+from requests import RequestException
+
 from config import (
     DATE_STR,
+    EDITOR_MODEL,
+    INTERESTS,
+    NUM_CTX,
     RESEARCHER_MODEL,
     WRITER_MODEL,
-    EDITOR_MODEL,
-    NUM_CTX,
-    INTERESTS,
 )
+from ingest import fetch_article
 from prompts import (
+    EDITOR_SYSTEM_PROMPT,
+    EDITOR_USER_PROMPT,
     RESEARCHER_SYSTEM_PROMPT,
     RESEARCHER_USER_PROMPT,
     SUMMARY_SYSTEM_PROMPT,
     SUMMARY_USER_PROMPT,
     WRITER_SYSTEM_PROMPT,
     WRITER_USER_PROMPT,
-    EDITOR_SYSTEM_PROMPT,
-    EDITOR_USER_PROMPT,
 )
-from opentelemetry import trace
-from openinference.instrumentation import using_prompt_template
 
 tracer = trace.get_tracer(__name__)
 
@@ -124,7 +126,7 @@ def summarize_article(article: dict):
 def researcher(raw_articles: list[dict]) -> list[dict] | None:
     """Researcher Agent, refines article results into best candidates and summarizes"""
     logging.info(
-        f"Ingested {len(raw_articles)} total articles from {len(set(a.get('source_feed') for a in raw_articles))} feeds"
+        f"Ingested {len(raw_articles)} total articles from {len({a.get('source_feed') for a in raw_articles})} feeds"
     )
 
     # Fetch each article's content scraped by BeautifulSoup

@@ -17,14 +17,19 @@
 - [ ] use pydantic for basic settings 
     ```python
     from pydantic_settings import BaseSettings
+
+
     class Settings(BaseSettings):
         db_url: str = "default_url"
+
+
     settings = Settings()
     ```
 
     In other files:
     ```python
     from config import settings
+
     print(settings.db_url)
     ```
 - [ ] Actually do structured output I guess ollama can do this kina like PydanticAI https://docs.ollama.com/capabilities/structured-outputs#python-2
@@ -32,3 +37,5 @@
 - [ ] Add checkpoints and break up functional outputs so that it doesn't have to run as a continuous 'script' and can be restarted in place.
 - [ ] Add agent memory of previously covered articles (so as not to repeat) 
 - [ ] Add agent memory of previous digests to learn from past output
+- [ ] I should turn articles into an ABC or pydantic model so that managing them is easiers I'm doing a lot of mutations on them throughout the ingestion process and it's annoying
+- [ ] setup alembic to track sql migrations
