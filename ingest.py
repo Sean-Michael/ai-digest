@@ -16,8 +16,7 @@ from bs4 import BeautifulSoup
 from requests import RequestException, Response
 
 from config import TIMEFRAME_HOURS
-
-TEST = True
+from db import fetch_existing_articles
 
 
 def fetch_article(url: str) -> str | None:
@@ -125,7 +124,7 @@ def get_recent_entry(name: str, url: str, entry: dict):
             return entry
 
 
-def parse_rss_feed(name: str, url: str):
+def parse_rss_feed(name: str, url: str) -> list[dict] | None:
     """Uses feedparser.parse() to parse a dict out of an RSS feed from URL"""
     articles = []
     try:
@@ -137,6 +136,13 @@ def parse_rss_feed(name: str, url: str):
             if recent_entry:
                 articles.append(recent_entry)
         logging.debug(f"Got {len(articles)} recent entries for {name}")
+        # Dedup articles found in db
+        existing_articles = fetch_existing_articles("articles", articles)
+        articles = [
+            a
+            for a in articles
+            if (a.get("title"), a.get("link")) not in existing_articles
+        ]
         return articles
 
     except Exception as e:
@@ -167,16 +173,7 @@ def ingest_rss_feeds() -> list[dict]:
     return articles
 
 
-def ingest_dummy_rss_feeds() -> list[dict]:
-    """Parse the dummy local rss feed adn return list of FeedParserDict"""
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future = [executor.submit()]
-
-
 if __name__ == "__main__":
-    """Local main guard in case of running standalone"""
+    """main for standalone run"""
     logging.basicConfig(level="DEBUG")
-    if not TEST:
-        ingest_rss_feeds()
-    else:
-        ingest_dummy_rss_feeds()
+    ingest_rss_feeds()

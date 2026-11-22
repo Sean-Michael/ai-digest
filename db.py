@@ -79,6 +79,21 @@ def insert_articles(table: str, articles: list[dict] | None):
         cur.executemany(query, articles)
 
 
+def fetch_existing_articles(table: str, articles: list[dict]) -> set[tuple[str, str]]:
+    """Queries db for exact articles and return the existing set."""
+    if pool is None:
+        raise RuntimeError("Pool not initialized")
+    links = [a.get("link") for a in articles]
+    titles = [a.get("title") for a in articles]
+    query = sql.SQL(
+        "SELECT title, link FROM {table} WHERE title = ANY(%s) AND link = ANY(%s)"
+    ).format(table=sql.Identifier(table))
+    with pool.connection() as conn, conn.cursor() as cur:
+        cur.execute(query, (titles, links))
+        existing_articles = set(cur.fetchall())
+    return existing_articles
+
+
 """
 TODO: come up with a better way to do this
     - import time db initialization is ok
