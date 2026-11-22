@@ -5,7 +5,7 @@ Description: Agentic AI workflow for gathering RSS feed based content into a new
 Version: v1.0.2
 """
 
-import json
+import sys
 import logging
 import os
 import uuid
@@ -36,7 +36,7 @@ from config import (
     console_format,
     json_formatter,
 )
-from db import create_table, fetch_existing_articles, insert_articles
+from db import create_table, fetch_existing_articles, insert_articles, pool
 
 # Local project modules
 from ingest import ingest_rss_feeds
@@ -74,7 +74,8 @@ def setup():
         trace_api.set_tracer_provider(tracer_provider)
 
     # Setup the database
-    if ENABLE_DB:
+    if ENABLE_DB and pool:
+        pool.open(wait=True, timeout=10)
         create_articles_table()
 
 
@@ -176,11 +177,13 @@ def main():
             write_newsletter(final)
         else:
             logging.error(f"Failed to write, no final or draft, final:{final}")
-            exit(1)
+            sys.exit(1)
 
         end_main = perf_counter()
         logging.info(f"Finished main execution in {end_main - start_main}s")
-        exit(0)
+        if ENABLE_DB and pool:
+            pool.close()
+        sys.exit(0)
 
 
 if __name__ == "__main__":

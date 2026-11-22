@@ -22,6 +22,7 @@ def create_connection_pool(
     password: str,
     min_size: int = 2,
     max_size: int = 10,
+    open=False,
 ) -> ConnectionPool | None:
     """Opens a psycopg connection pool and returns it for use in other functions"""
 
@@ -32,12 +33,8 @@ def create_connection_pool(
     try:
         # Create a connection pool
         pool: ConnectionPool[psycopg.Connection[tuple]] = ConnectionPool(
-            connection_string,
-            min_size=min_size,
-            max_size=max_size,
+            connection_string, min_size=min_size, max_size=max_size, open=open
         )
-        # Wait for it to be ready, before returning it
-        pool.wait()
         return pool
     except Exception as e:
         logging.error(f"Error creating connection pool: {e}")
@@ -114,7 +111,7 @@ pool = create_connection_pool(
 )
 
 if pool is None:
-    sys.exit(1)
+    raise RuntimeError("Database pool creation failed")
 
 if __name__ == "__main__":
     load_dotenv()
