@@ -77,3 +77,5 @@ console_format = "%(asctime)s - %(levelname)s - %(message)s"
 json_formatter = JsonFormatter("%(asctime)s %(levelname)s %(message)s")
 
 LOG_LEVEL = logging.INFO
+
+SITE_DISPATCH_TOKEN = os.getenv("SITE_DISPATCH_TOKEN")

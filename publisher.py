@@ -4,21 +4,24 @@ Author: Sean-Michael Riesterer
 Description: Functions for file IO and publishing newsletter to S3
 """
 
-import boto3
-from botocore.exceptions import ClientError
 import logging
 import os
 import re
 
+import boto3
+import requests
+from botocore.exceptions import ClientError
+
 from config import (
-    S3_CONTENT_BUCKET,
     AWS_REGION,
-    PUBLISH,
-    DIGEST_DIR,
     DATE_STR,
-    RESEARCHER_MODEL,
-    WRITER_MODEL,
+    DIGEST_DIR,
     EDITOR_MODEL,
+    PUBLISH,
+    RESEARCHER_MODEL,
+    S3_CONTENT_BUCKET,
+    WRITER_MODEL,
+    SITE_DISPATCH_TOKEN,
 )
 
 
@@ -63,6 +66,29 @@ def make_slug(title: str) -> str:
     return slug
 
 
+def trigger_site_rebuild() -> requests.Response | None:
+    """Trigger GitHub Action to rebuild static content."""
+    url = "https://api.github.com/repos/Sean-Michael/Sean-Michael.dev/dispatches"
+    payload = {"event_type": "digest-published"}
+    headers = {
+        "Authorization": f"Bearer {SITE_DISPATCH_TOKEN}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    try:
+        response = requests.post(url, timeout=10, headers=headers, json=payload)
+        response.raise_for_status()
+
+        if response.status_code == 204:
+            logging.info("GitHub Action dispatch Success!")
+        return response
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Caught exception in site rebuild request: {e}")
+        return None
+
+
 def write_newsletter(final: str) -> None:
     """
     Add frontmatter, save locally, and upload to S3.
@@ -101,5 +127,7 @@ date: {DATE_STR}
         uploaded = upload_file(filename, S3_CONTENT_BUCKET, object_name)
         if uploaded:
             logging.info(f"Uploaded {filename} to s3://{S3_CONTENT_BUCKET}")
+            trigger_site_rebuild()
+
         else:
             logging.error(f"Failed to upload {filename} to s3://{S3_CONTENT_BUCKET}")
